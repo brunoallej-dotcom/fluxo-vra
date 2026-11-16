@@ -44,6 +44,10 @@ agendado), mudanças no `index.html`.
 - `firebase.json` → `hosting.public = "public"` e `hosting.headers` (RH-02 a RH-04).
 - HSTS **sem** `preload`: o preload só vale para o domínio raiz e seria uma
   decisão para todo o `somosvra.com.br`.
+- **Observado em produção (2026-11-16):** o Firebase Hosting impõe o próprio
+  HSTS (`max-age=31556926; includeSubDomains; preload`) e ignora o valor do
+  `firebase.json` no `web.app`. Conferir também no domínio próprio depois da
+  troca de DNS. O teste H02 valida a configuração no emulador.
 - Sem `Cross-Origin-Opener-Policy`: o relatório abre uma janela com
   `window.open` + `document.write`; não vale o risco nesta etapa.
 
