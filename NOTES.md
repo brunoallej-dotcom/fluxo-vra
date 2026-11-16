@@ -9,13 +9,18 @@ Leia antes de começar; atualize antes de encerrar.
 - **Situação**: S1, S3 (Onda 0) e S4 concluídos; S2 parcial. O app em
   produção ainda **não tem login** e as regras do Firestore continuam abertas
   (as de contenção estão prontas e testadas, aguardando confirmação para publicar).
-- **Branches** (locais, sem push): `docs/fase-1-login` → `chore/onda-0-fundacao`
-  (empilhadas sobre `main`).
-- **Pendências de S2**: (1) publicar as regras de contenção — só com "sim"
-  explícito do usuário; (2) usuário conferir o plano (Spark/Blaze) e ativar
-  backup/PITR se for Blaze.
-- **Próximo passo**: frentes paralelas A/B/C. **Não iniciar a Onda 1 sem o
-  usuário autorizar** (pedido explícito em 2026-11-16).
+- **PR #1** (rascunho): `chore/onda-0-fundacao` → `main`, com docs + Onda 0 +
+  correções da revisão. Revisão independente: "pode mergear". CI: check,
+  dependências, hooks e regras verdes; gitleaks com exceção restrita à fixture
+  (issue #2) — aguardando o run confirmar.
+- **Caminho AISAC em andamento** (autorizado pelo usuário em 2026-11-16):
+  CI verde → PR pronto → **aprovação do usuário para a supressão do gitleaks**
+  (exigência AISAC; o autor não pode aprovar o próprio PR) → squash merge →
+  deploy das regras de contenção a partir da `main` com `--project prod`
+  (a regra `ask` pede confirmação) → usuário: Blaze + alerta de orçamento →
+  PITR e backup por comando → apagar a cópia local → proteger a `main` → Q2.
+- **Próximo passo depois disso**: frentes paralelas A/B/C. **Não iniciar a
+  Onda 1 sem o usuário autorizar** (pedido explícito em 2026-11-16).
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -49,6 +54,9 @@ principal), **B** = Onda 2 (regras), **C** = Onda 4a (E2E).
 | 2026-11-16 | Regras de contenção provisórias antes do login, compatíveis com o app atual e com o formato da Fase 1 | Spec §5.3 |
 | 2026-11-16 | Emuladores e testes sempre com o projeto `demo-fluxo` (isolado da produção) | Spec §9.2 |
 | 2026-11-16 | Hosting fora do `firebase.json` até decidir a hospedagem (Q2) | Plano, Onda 0 |
+| 2026-11-16 | gitleaks: exceção só da regra `generic-api-key` só em `tests/fixtures/users.json` (senhas fictícias do emulador), via `[[rules.allowlists]]` — sintaxe do gitleaks 8.24 | `.gitleaks.toml`, issue #2 |
+| 2026-11-16 | `.firebaserc` com `default: demo-fluxo`; produção só pelo alias `prod` | `.firebaserc` |
+| 2026-11-16 | Mensagens de commit e títulos de PR em inglês (AISAC git-workflow); docs e UI seguem em pt-BR | — |
 
 ## Questões em aberto
 
