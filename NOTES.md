@@ -122,6 +122,9 @@ Detalhes e propostas na spec, §8.
 - Squash merge na `main` (`56a8538`), CI verde nesse commit, deploy das regras
   de contenção com `--project prod` e teste pós-deploy em produção (só leitura
   e gravações negadas; nada alterado).
+- Verificação manual do usuário em produção (app servido em `localhost:5500`):
+  sincronização ok, leitura de tarefas/reuniões/clientes ok, criar, concluir e
+  apagar tarefa de teste ok com as regras de contenção.
 
 ### 2026-11-16 (tarde) — pré-requisitos S1–S4
 
