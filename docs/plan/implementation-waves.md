@@ -10,16 +10,16 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 
 | Passo | Entrega | Status |
 |------|---------|--------|
-| S1 | Docs da Fase 1 e config do Claude Code commitados numa branch (as worktrees nascem do último commit) | ⬜ |
-| S2 | Urgente: cópia local dos dados de produção (só leitura); regras de contenção prontas e testadas, publicadas só com confirmação; backup/PITR decidido pelo dono do projeto | ⬜ |
-| S3 | Onda 0 (abaixo) | ⬜ |
-| S4 | Interfaces congeladas na spec (§9): seletores da tela de login, modo emulador, fixture de usuários de teste | ⬜ |
+| S1 | Docs da Fase 1 e config do Claude Code commitados numa branch (as worktrees nascem do último commit) | ✅ |
+| S2 | Urgente: cópia local dos dados de produção (só leitura); regras de contenção prontas e testadas, publicadas só com confirmação; backup/PITR decidido pelo dono do projeto | 🟡 |
+| S3 | Onda 0 (abaixo) | ✅ |
+| S4 | Interfaces congeladas na spec (§9): seletores da tela de login, modo emulador, fixture de usuários de teste | ✅ |
 
 ## Ondas
 
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
-| 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ⬜ |
+| 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`index.html`) | 0, S4 | 2, 4a | ⬜ |
 | 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ⬜ |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`index.html`) | 1 | 2, 4a | ⬜ |

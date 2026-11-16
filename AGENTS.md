@@ -28,8 +28,17 @@ python3 -m http.server 5500 --bind 127.0.0.1
 ```
 
 Não abra o arquivo direto (`file://`): o Firebase Auth não funciona nessa origem.
-Depois da Onda 0 existirão `npm run check`, `npm run test:rules` e
-`npm run test:e2e` (ver `docs/plan/implementation-waves.md`).
+
+Tooling de testes (Node ≥ 24.12 e Java ≥ 21 para os emuladores):
+
+```bash
+npm ci
+npm run check        # sintaxe dos <script> inline, versão única do Firebase SDK, tsc estrito
+npm run test:rules   # regras do Firestore no emulador (projeto demo-fluxo)
+npm run test:e2e     # Playwright contra os emuladores (a partir da Onda 4a)
+```
+
+Emuladores e testes usam sempre o projeto `demo-fluxo`, isolado da produção.
 
 ## Mapa do `index.html`
 

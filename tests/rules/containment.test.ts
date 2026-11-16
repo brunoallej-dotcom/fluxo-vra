@@ -100,7 +100,9 @@ describe('regras de contenção', () => {
 
   it('C11 fluxo_users: logado lê, anônimo não lê, ninguém grava', async () => {
     await assertSucceeds(getDoc(doc(signedIn(), `fluxo_users/${ceo.uid}`)));
+    await assertSucceeds(getDocs(collection(signedIn(), 'fluxo_users'))); // lista de pessoas (RF-06)
     await assertFails(getDoc(doc(anon(), `fluxo_users/${ceo.uid}`)));
+    await assertFails(getDocs(collection(anon(), 'fluxo_users')));
     await assertFails(setDoc(doc(signedIn(), `fluxo_users/${ceo.uid}`), { ...ceo.profile!, role: 'ceo' }));
     await assertFails(setDoc(doc(anon(), 'fluxo_users/novo'), { role: 'ceo' }));
   });

@@ -6,23 +6,29 @@ Leia antes de começar; atualize antes de encerrar.
 ## Current status
 
 - **Fase atual**: Fase 1 — autenticação multiusuário (login e senha por pessoa).
-- **Situação**: executando os pré-requisitos sequenciais S1–S4. O app em
-  produção ainda **não tem login** e as regras do Firestore estão abertas.
-- **Próximo passo**: concluir S1–S4 e avisar o usuário antes de iniciar a
-  Onda 1 (o usuário pediu para não começar a Onda 1 sem avisar).
+- **Situação**: S1, S3 (Onda 0) e S4 concluídos; S2 parcial. O app em
+  produção ainda **não tem login** e as regras do Firestore continuam abertas
+  (as de contenção estão prontas e testadas, aguardando confirmação para publicar).
+- **Branches** (locais, sem push): `docs/fase-1-login` → `chore/onda-0-fundacao`
+  (empilhadas sobre `main`).
+- **Pendências de S2**: (1) publicar as regras de contenção — só com "sim"
+  explícito do usuário; (2) usuário conferir o plano (Spark/Blaze) e ativar
+  backup/PITR se for Blaze.
+- **Próximo passo**: frentes paralelas A/B/C. **Não iniciar a Onda 1 sem o
+  usuário autorizar** (pedido explícito em 2026-11-16).
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
 | Passo | Entrega | Status |
 |------|---------|--------|
-| S1 | Docs da Fase 1 e config do Claude Code commitados numa branch | ⬜ |
-| S2 | Cópia local dos dados; regras de contenção prontas (publicar só com confirmação); backup/PITR | ⬜ |
-| S3 | Onda 0 | ⬜ |
-| S4 | Interfaces congeladas na spec (§9) | ⬜ |
+| S1 | Docs da Fase 1 e config do Claude Code commitados numa branch | ✅ |
+| S2 | Cópia local dos dados; regras de contenção prontas (publicar só com confirmação); backup/PITR | 🟡 |
+| S3 | Onda 0 | ✅ |
+| S4 | Interfaces congeladas na spec (§9) | ✅ |
 
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
-| 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ⬜ |
+| 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ⬜ |
 | 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ⬜ |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ⬜ |
@@ -40,6 +46,9 @@ principal), **B** = Onda 2 (regras), **C** = Onda 4a (E2E).
 | 2026-11-16 | Papéis `ceo` (2 pessoas) e `staff` (2 pessoas); sem papel admin separado — contas geridas pelo dono do projeto no console | Spec §1 |
 | 2026-11-16 | `personId` = valor atual de `Task.owner` (`Bruno`, `Julia`, `Vinicius`), para não migrar dados | Spec §1 |
 | 2026-11-16 | Contrato de dados em OpenAPI 3.1 só com `components` (o app não tem API HTTP própria) | `contracts/openapi.v1.yaml` |
+| 2026-11-16 | Regras de contenção provisórias antes do login, compatíveis com o app atual e com o formato da Fase 1 | Spec §5.3 |
+| 2026-11-16 | Emuladores e testes sempre com o projeto `demo-fluxo` (isolado da produção) | Spec §9.2 |
+| 2026-11-16 | Hosting fora do `firebase.json` até decidir a hospedagem (Q2) | Plano, Onda 0 |
 
 ## Questões em aberto
 
@@ -76,6 +85,23 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-16 (tarde) — pré-requisitos S1–S4
+
+- Regras de produção confirmadas via MCP: `allow read, write: if true`; sem
+  backup, PITR desligado.
+- S1: commits `a0051f7` (config do Claude Code) e `df38583` (docs) na branch
+  `docs/fase-1-login`.
+- S2: cópia local de produção em `backups/2026-11-16T19-33-05-839Z/`
+  (`fluxo`: 3 docs; `fluxo_clients`: 8 docs), fora do git, permissão só do
+  usuário, lida via REST sem credencial. Regras de contenção escritas,
+  validadas pelo MCP e com C01–C11 verdes; os dados reais cabem nelas.
+- S3: Onda 0 no commit `46d0151` (branch `chore/onda-0-fundacao`): `npm ci`,
+  `npm run check` e `npm run test:rules` verdes.
+- S4: spec §9 (seletores `data-testid`, modo emulador, fixture) e
+  `tests/fixtures/users.json`.
+- Achado: `setInterval(saveState, 30000)` regrava as tarefas a cada 30 s em
+  cada aba → RF-16.
 
 ### 2026-11-16
 
