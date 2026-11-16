@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # @types/node acompanha a versão do Node do projeto (24: engines e CI).
+      # Major só junto com uma troca deliberada do Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       firebase-tooling:
         patterns: ["firebase", "firebase-tools", "@firebase/*"]
@@ -15,3 +20,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # O .gitleaks.toml usa a sintaxe do gitleaks 8.24 (embutido na v2.x) e a
+      # exceção da issue #2 depende dela. A v3 será avaliada à parte.
+      - dependency-name: "gitleaks/gitleaks-action"
+        update-types: ["version-update:semver-major"]
