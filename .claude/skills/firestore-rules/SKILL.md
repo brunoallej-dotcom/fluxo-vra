@@ -39,6 +39,8 @@ Mudança pedida nas regras: $ARGUMENTS
 - Na Fase 1, confira a ordem do cutover (Onda 4 do plano): o `index.html` que
   faz login e grava `updatedBy`/`updatedAt` precisa estar no ar **antes** das
   regras novas, senão o app para para todos.
-- Com o "sim" explícito: `npx firebase deploy --only firestore:rules`.
+- Publique a partir da `main`, com o CI verde no commit atual (`gh run list --branch main --limit 1`).
+- Com o "sim" explícito: `npx firebase deploy --only firestore:rules --project prod`
+  (o projeto padrão do repositório é o `demo-fluxo`, isolado; produção só pelo alias `prod`).
 - Depois: um teste negativo (leitura sem login deve dar `permission-denied`) e
   um positivo (login de um membro abre o dashboard).

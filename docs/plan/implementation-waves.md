@@ -165,7 +165,8 @@ Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
     4. 4 contas criadas e 4 documentos `fluxo_users/{uid}` com `active: true`.
     5. `index.html` novo publicado e login testado pelas 4 pessoas (as regras de
        contenção já aceitam o formato novo — spec §5.3).
-    6. Só então `firestore.rules` completo publicado (`firebase deploy --only firestore:rules`).
+    6. Só então `firestore.rules` completo publicado, a partir da `main` com CI
+       verde (`firebase deploy --only firestore:rules --project prod`).
     7. Teste negativo em produção: leitura sem login recebe `permission-denied`.
 - **Goal command**: `/goal npm run test:e2e termina com código 0 e a saída lista E01 a E08 como passed, stop after 8 tries` (os passos de produção são manuais e ficam fora do goal loop)
 

@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "fluxo-app-59174"
+    "default": "demo-fluxo",
+    "prod": "fluxo-app-59174"
   }
 }

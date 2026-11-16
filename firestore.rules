@@ -10,11 +10,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // updatedBy/updatedAt só têm o tipo conferido aqui; a autoria (updatedBy ==
+    // request.auth.uid) só passa a ser garantida pelas regras completas (§5.2).
     function validPayload() {
       let d = request.resource.data;
       return d.keys().hasOnly(['data', 'updatedBy', 'updatedAt'])
         && d.data is string
-        && d.data.size() <= 900000;
+        && d.data.size() <= 900000
+        && (!('updatedBy' in d) || d.updatedBy is string)
+        && (!('updatedAt' in d) || d.updatedAt is timestamp);
     }
 
     match /fluxo/{docId} {

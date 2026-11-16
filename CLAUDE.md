@@ -33,8 +33,8 @@ Do plugin AISAC também estão disponíveis `code-reviewer`, `test-runner`,
 
 | Hook | Evento | O que faz |
 |---|---|---|
-| `protect-secrets.mjs` | PreToolUse (`Read`, `Edit`, `Write`, `MultiEdit`, `Bash`) | Bloqueia acesso a `.env`, `.env.local*`, chaves de service account e tokens do Firebase CLI (inclusive via `cat`, `grep` etc.), e impede gravar chave privada em qualquer arquivo. `.env.example` é liberado |
-| `firebase-mcp-guard.mjs` | PreToolUse (`mcp__firebase__.*`) | Força confirmação humana em toda tool do MCP do Firebase que cria, altera, apaga, publica ou envia algo, e na que lista usuários (e-mails) |
+| `protect-secrets.mjs` | PreToolUse (`Read`, `Edit`, `Write`, `MultiEdit`, `Bash`) | Bloqueia leitura/edição direta de `.env`, `.env.local*`, chaves de service account e tokens do Firebase CLI/gcloud, e qualquer comando Bash que mencione esses arquivos; impede gravar chave privada em qualquer arquivo. `.env.example` é liberado. Falha fechada (pede confirmação). **É guarda-corpo, não cofre:** não enxerga leitura indireta (grep recursivo, globs, caminho montado em script) |
+| `firebase-mcp-guard.mjs` | PreToolUse (`mcp__firebase__.*`) | Allowlist: só tools de leitura (`get`/`list`/`query`/`validate`/`read`) e a configuração local do ambiente passam direto; todo o resto, inclusive tools desconhecidas, e a que lista usuários (e-mails) pedem confirmação humana |
 | `validate-edit.mjs` | PostToolUse (`Edit`, `Write`, `MultiEdit`) | Confere se JSON editado continua válido e checa a sintaxe dos `<script>` inline do `index.html` com `node --check` |
 
 Os hooks usam `node` (v24 no ambiente). Se um hook bloquear algo legítimo,

@@ -34,6 +34,7 @@ Tooling de testes (Node ≥ 24.12 e Java ≥ 21 para os emuladores):
 ```bash
 npm ci
 npm run check        # sintaxe dos <script> inline, versão única do Firebase SDK, tsc estrito
+npm run test:hooks   # regressão dos hooks de segurança do Claude Code (.claude/hooks/)
 npm run test:rules   # regras do Firestore no emulador (projeto demo-fluxo)
 npm run test:e2e     # Playwright contra os emuladores (a partir da Onda 4a)
 ```

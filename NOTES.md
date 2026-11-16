@@ -76,6 +76,18 @@ Detalhes e propostas na spec, §8.
   na Fase 2.
 - **Ordem do cutover**: publicar `firestore.rules` antes do `index.html` novo
   derruba o app para todos.
+- **Autoria só confiável depois da Onda 2**: com as regras de contenção,
+  `updatedBy`/`updatedAt` têm o tipo conferido, mas qualquer um pode
+  preenchê-los; a garantia (`updatedBy == request.auth.uid`) vem das regras completas.
+- **Dependências de desenvolvimento**: 14 vulnerabilidades moderadas
+  transitivas do `firebase-tools` (16/11/2026), aceitas por serem só tooling
+  local/CI sem entrada não confiável; o CI falha em high/critical e o Dependabot
+  propõe atualizações semanais. O `grpc-js` vulnerável dos testes foi forçado
+  para 1.14.7 via `overrides`.
+- **gitleaks-action**: grátis para conta pessoal; se o repositório for para uma
+  organização, passa a exigir o secret `GITLEAKS_LICENSE`.
+- **Hooks são guarda-corpo, não cofre**: `protect-secrets` não enxerga leitura
+  indireta (grep recursivo, globs); a proteção real é não manter segredo no repositório.
 
 ## Próximas fases (sem spec ainda)
 

@@ -96,6 +96,9 @@ describe('regras de contenção', () => {
     await assertSucceeds(
       setDoc(doc(signedIn(), 'fluxo/tasks'), { data: '[]', updatedBy: ceo.uid, updatedAt: serverTimestamp() }),
     );
+    // tipos errados nos campos de auditoria
+    await assertFails(setDoc(doc(signedIn(), 'fluxo/tasks'), { data: '[]', updatedBy: 123, updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(signedIn(), 'fluxo/tasks'), { data: '[]', updatedBy: ceo.uid, updatedAt: '2026-11-16' }));
   });
 
   it('C11 fluxo_users: logado lê, anônimo não lê, ninguém grava', async () => {
@@ -105,5 +108,6 @@ describe('regras de contenção', () => {
     await assertFails(getDocs(collection(anon(), 'fluxo_users')));
     await assertFails(setDoc(doc(signedIn(), `fluxo_users/${ceo.uid}`), { ...ceo.profile!, role: 'ceo' }));
     await assertFails(setDoc(doc(anon(), 'fluxo_users/novo'), { role: 'ceo' }));
+    await assertFails(deleteDoc(doc(signedIn(), `fluxo_users/${ceo.uid}`)));
   });
 });

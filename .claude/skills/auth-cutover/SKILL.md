@@ -32,7 +32,8 @@ confirmar e só então segue.
 6. **Primeiro acesso.** Cada pessoa usa "Esqueci minha senha", cria a própria
    senha e entra. Confirme as 4 antes de seguir.
 7. **Publicar as regras.** Mostre o diff de `firestore.rules`, peça o "sim"
-   explícito e rode `npx firebase deploy --only firestore:rules`.
+   explícito e rode, a partir da `main` com CI verde,
+   `npx firebase deploy --only firestore:rules --project prod`.
 8. **Conferir.** Sem login, uma leitura recebe `permission-denied`; com login,
    cada papel vê o que deve (CEO View só para `ceo`).
 

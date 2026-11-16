@@ -9,6 +9,7 @@
   },
   "scripts": {
     "check": "node scripts/check-inline-js.mjs index.html && tsc --noEmit",
+    "test:hooks": "node --test \"tests/hooks/*.test.mjs\"",
     "test:rules": "firebase emulators:exec --only firestore --project demo-fluxo \"vitest run --reporter=verbose\"",
     "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-fluxo \"playwright test\"",
     "serve": "python3 -m http.server 5500 --bind 127.0.0.1"
@@ -21,5 +22,8 @@
     "firebase-tools": "15.36.0",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.7"
   }
 }

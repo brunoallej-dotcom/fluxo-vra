@@ -243,7 +243,9 @@ continua respeitando** e que reduzem o estrago possível:
 - só existem `fluxo/{tasks|meetings|routine|routine_<id>}` e `fluxo_clients/{id}`;
   qualquer outro caminho é negado;
 - gravação só no formato `{ data: string }` (até 900 000 caracteres), aceitando
-  também `updatedBy`/`updatedAt` para a transição;
+  também `updatedBy` (string) e `updatedAt` (timestamp) para a transição — a
+  **autoria** desses campos só passa a ser garantida pelas regras completas
+  (§5.2), porque antes do login qualquer um pode preenchê-los;
 - `delete` proibido em `fluxo/*` (o app só apaga clientes);
 - `fluxo_users/*` legível só por quem está logado, nunca gravável pelo cliente
   (o `index.html` novo lê o perfil durante o passo 5 do cutover, com estas

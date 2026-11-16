@@ -23,3 +23,6 @@ backups/
 test-results/
 playwright-report/
 coverage/
+
+# Relatórios locais do security-scan
+.security-reports/
