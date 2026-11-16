@@ -19,7 +19,7 @@ padrão; `file://` e `127.0.0.1` não. Sirva sempre por HTTP e abra por
 2. Suba o servidor em background, preso ao loopback (nunca `0.0.0.0`, para não
    expor o app na rede local):
    ```bash
-   python3 -m http.server 5500 --bind 127.0.0.1
+   npm run serve   # python3 -m http.server 5500 --bind 127.0.0.1 --directory public
    ```
 3. **Sem `emulator`**: o app fala com o Firestore de **produção**. Avise o
    usuário de que qualquer coisa criada ou apagada ali vale para o time inteiro.

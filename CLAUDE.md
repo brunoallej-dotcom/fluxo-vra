@@ -7,7 +7,7 @@
 - **Responda em português do Brasil.**
 - Antes de começar, leia o `NOTES.md` (status atual e próxima onda). Ao terminar
   uma onda, atualize o `NOTES.md` e `docs/plan/implementation-waves.md` juntos.
-- O `index.html` passa do limite de leitura: use `Read` com `offset`/`limit`,
+- O `public/index.html` passa do limite de leitura: use `Read` com `offset`/`limit`,
   `grep -n` ou o agent `index-html-navigator`. Nunca leia as linhas dos logos em
   base64 (`--logo-white`, `--logo-dark`).
 

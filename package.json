@@ -2,17 +2,19 @@
   "name": "fluxo-vra",
   "version": "0.0.0",
   "private": true,
-  "description": "Fluxo — dashboard de produtividade interno. Tooling de testes; o app é o index.html, sem build.",
+  "description": "Fluxo — dashboard de produtividade interno. Tooling de testes; o app é o public/index.html, sem build.",
   "type": "module",
   "engines": {
     "node": ">=24.12.0"
   },
   "scripts": {
-    "check": "node scripts/check-inline-js.mjs index.html && tsc --noEmit",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "check": "node scripts/check-inline-js.mjs public/index.html && tsc --noEmit",
     "test:hooks": "node --test \"tests/hooks/*.test.mjs\"",
     "test:rules": "firebase emulators:exec --only firestore --project demo-fluxo \"vitest run --reporter=verbose\"",
+    "test:hosting": "firebase emulators:exec --only hosting --project demo-fluxo \"node --test \\\"tests/hosting/*.test.mjs\\\"\"",
     "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-fluxo \"playwright test\"",
-    "serve": "python3 -m http.server 5500 --bind 127.0.0.1"
+    "serve": "python3 -m http.server 5500 --bind 127.0.0.1 --directory public"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",

@@ -14,25 +14,26 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 | S2 | Urgente: cópia local dos dados de produção (só leitura); regras de contenção prontas e testadas, publicadas só com confirmação; backup/PITR decidido pelo dono do projeto | 🟡 |
 | S3 | Onda 0 (abaixo) | ✅ |
 | S4 | Interfaces congeladas na spec (§9): seletores da tela de login, modo emulador, fixture de usuários de teste | ✅ |
+| S5 | Hospedagem: `public/index.html` em `public/`, Firebase Hosting com cabeçalhos de segurança, testes H01–H05, guarda-corpos da `main` ([spec](../specs/hospedagem.md)) — **antes** da frente A, porque muda o caminho do arquivo | 🟡 |
 
 ## Ondas
 
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ✅ |
-| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`index.html`) | 0, S4 | 2, 4a | ⬜ |
+| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`public/index.html`) | 0, S4 | 2, 4a | ⬜ |
 | 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ⬜ |
-| 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`index.html`) | 1 | 2, 4a | ⬜ |
+| 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`public/index.html`) | 1 | 2, 4a | ⬜ |
 | 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ⬜ |
 | 4b | Integração (E2E verde com 1+2+3+4a) e cutover em produção | 2, 3, 4a | — | ⬜ |
 
 ### Frentes paralelas
 
-Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
+Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
 
 | Frente | Ondas | Arquivos (exclusivos) | Executor sugerido |
 |---|---|---|---|
-| A | 1 → 3 | `index.html` | Sessão principal (caminho crítico, arquivo único de 4 800 linhas) + revisão do `code-reviewer` |
+| A | 1 → 3 | `public/index.html` | Sessão principal (caminho crítico, arquivo único de 4 800 linhas) + revisão do `code-reviewer` |
 | B | 2 | `firestore.rules`, `tests/rules/` | Subagente em worktree + auditoria do `firestore-rules-auditor` |
 | C | 4a | `tests/e2e/`, `docs/how-to/` | Subagente em worktree |
 
@@ -74,7 +75,7 @@ Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
 ## Onda 1 — Login e gate de sessão
 
 - **Objetivo**: ninguém vê nem lê dados sem estar logado com perfil ativo.
-- **Escopo (slices/arquivos)**: `index.html` — módulo Firebase (importa
+- **Escopo (slices/arquivos)**: `public/index.html` — módulo Firebase (importa
   `firebase-auth.js` 10.12.0; modo emulador da spec §9.2), tela de login
   (substitui `whoOverlay`, com os seletores da spec §9.1),
   `onAuthStateChanged`, checagem de `fluxo_users/{uid}`, evento
@@ -87,13 +88,13 @@ Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   (arquivos disjuntos; contrato e seletores congelados).
 - **Critérios de aceite**:
   - `npm run check` termina com código 0.
-  - `grep -c "fluxo_me\|openWhoPicker\|chooseWho" index.html` retorna 0.
-  - Os seletores da spec §9.1 existem no `index.html`.
+  - `grep -c "fluxo_me\|openWhoPicker\|chooseWho" public/index.html` retorna 0.
+  - Os seletores da spec §9.1 existem no `public/index.html`.
   - Com os emuladores rodando e `index.html?emulator=1`: sem sessão aparece só o
     login; login de CEO mostra o dashboard e a CEO View; login de `staff` não
     mostra a CEO View; "Sair" volta ao login e o `localStorage` fica sem
     chaves `fluxo_*` além do tema (conferido pela skill `verify`).
-- **Goal command**: `/goal npm run check termina com código 0, grep -c "fluxo_me\|openWhoPicker\|chooseWho" index.html imprime 0 e todos os data-testid da spec §9.1 aparecem no index.html, stop after 6 tries`
+- **Goal command**: `/goal npm run check termina com código 0, grep -c "fluxo_me\|openWhoPicker\|chooseWho" public/index.html imprime 0 e todos os data-testid da spec §9.1 aparecem no index.html, stop after 6 tries`
 
 ## Onda 2 — Regras do Firestore
 
@@ -115,7 +116,7 @@ Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
 
 - **Objetivo**: nenhuma pessoa fixa no código; toda gravação registra quem
   gravou; nenhuma aba antiga sobrescreve o trabalho dos outros sem ter mudado nada.
-- **Escopo (slices/arquivos)**: `index.html` — `PEOPLE` carregado de
+- **Escopo (slices/arquivos)**: `public/index.html` — `PEOPLE` carregado de
   `fluxo_users` (ativos/inativos, ordenação), avatar com cor do perfil ou da
   paleta, `routineKey()`/`loadRoutine()` pelo `routineId` do perfil, `hsWhoKey`
   com nomes dinâmicos, helper `fbWrite` usado por `saveState`, `saveMeetings`,
@@ -124,13 +125,13 @@ Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   "alteração" do RF-16.
 - **Depende de / paralela com**: depende da 1 (precisa da sessão e do perfil).
   Paralela com a 2 e a 4a (arquivos disjuntos). Não é paralela com a 1 porque as
-  duas mexem no `index.html`.
+  duas mexem no `public/index.html`.
 - **Critérios de aceite**:
   - `npm run check` termina com código 0.
-  - `grep -n "'Vinicius'" index.html` não retorna nada.
-  - `grep -c "setDoc(" index.html` retorna 1 (só dentro de `fbWrite`).
+  - `grep -n "'Vinicius'" public/index.html` não retorna nada.
+  - `grep -c "setDoc(" public/index.html` retorna 1 (só dentro de `fbWrite`).
   - No emulador, criar uma tarefa gera `fluxo/tasks` com `updatedBy` igual ao uid logado.
-- **Goal command**: `/goal npm run check termina com código 0, grep "'Vinicius'" index.html não encontra nada e grep -c "setDoc(" index.html imprime 1, stop after 6 tries`
+- **Goal command**: `/goal npm run check termina com código 0, grep "'Vinicius'" public/index.html não encontra nada e grep -c "setDoc(" public/index.html imprime 1, stop after 6 tries`
 
 ## Onda 4a — Testes E2E (test-first)
 
@@ -161,9 +162,10 @@ Depois de S1–S4, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
     1. Backup agendado ou PITR ativado no Firestore.
     2. Provedor e-mail/senha ativado; cadastro público desativado; proteção
        contra enumeração de e-mail ativada.
-    3. Domínio de hospedagem em "Domínios autorizados" (Q2).
+    3. `crm.somosvra.com.br` em "Domínios autorizados" do Auth e já servido
+       pelo Firebase Hosting (spec de hospedagem, §4).
     4. 4 contas criadas e 4 documentos `fluxo_users/{uid}` com `active: true`.
-    5. `index.html` novo publicado e login testado pelas 4 pessoas (as regras de
+    5. `public/index.html` novo publicado e login testado pelas 4 pessoas (as regras de
        contenção já aceitam o formato novo — spec §5.3).
     6. Só então `firestore.rules` completo publicado, a partir da `main` com CI
        verde (`firebase deploy --only firestore:rules --project prod`).

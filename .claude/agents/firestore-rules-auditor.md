@@ -26,8 +26,8 @@ Consulte sua memória em busca de achados e decisões anteriores antes de começ
   grava o quê), §5.2 (rascunho das regras), §7.1 (casos R01–R13).
 - `contracts/openapi.v1.yaml` — formato dos documentos (`StoredDocument`,
   `UserProfile`).
-- `index.html` — gravações e leituras reais. Ache com
-  `grep -n "setDoc(\|deleteDoc(\|getDoc(\|onSnapshot(\|doc(db\|collection(db" index.html | cut -c1-240`.
+- `public/index.html` — gravações e leituras reais. Ache com
+  `grep -n "setDoc(\|deleteDoc(\|getDoc(\|onSnapshot(\|doc(db\|collection(db" public/index.html | cut -c1-240`.
   Nunca leia as linhas `--logo-` (base64).
 
 ## Quando for invocado

@@ -6,21 +6,21 @@ Leia antes de começar; atualize antes de encerrar.
 ## Current status
 
 - **Fase atual**: Fase 1 — autenticação multiusuário (login e senha por pessoa).
-- **Situação**: S1, S3 (Onda 0) e S4 concluídos; S2 quase concluído. PR #1
-  mergeado na `main` (`56a8538`, squash). **Regras de contenção publicadas em
-  produção em 2026-11-16** e verificadas (leitura do app ok; coleções e
-  documentos fora da lista negados). O app ainda **não tem login** e a
-  **leitura continua pública** até o cutover.
-- **Pendências de S2 (do usuário)**: conferir o plano (Spark/Blaze); se Blaze,
-  criar alerta de orçamento e então ativar PITR + backup diário por comando
-  (com confirmação); depois disso, apagar a cópia local em `backups/`.
-- **Proteção da `main`**: indisponível — o GitHub exige Pro para branch
-  protection/rulesets em repositório privado. Decisão pendente do usuário
-  (assinar Pro ou seguir só com o processo + regra `ask` do `git push`).
-- **Questões abertas que importam agora**: Q2 (hospedagem; recomendação AISAC:
-  Firebase Hosting com headers de segurança no `firebase.json`) e Q1 (4ª pessoa).
-- **Próximo passo**: frentes paralelas A/B/C a partir da `main`. **Não
-  iniciar a Onda 1 sem o usuário autorizar** (pedido explícito em 2026-11-16).
+- **Situação**: S1–S4 concluídos; S2 com pendência (backup); **S5 (hospedagem)
+  em PR**. Regras de contenção em produção desde 2026-11-16, verificadas pelo
+  usuário no app. O app ainda **não tem login** e a **leitura continua pública**.
+- **Restrição do usuário (2026-11-16): nenhum plano pago por enquanto** —
+  Firebase Spark, GitHub Free. Consequências:
+  - backup: sem PITR/backup gerenciado → exportação diária criptografada via
+    GitHub Actions (spec a escrever); até lá, cópia local em `backups/`
+    (recomendado ao usuário criptografar com `gpg -c`);
+  - proteção da `main`: sem branch protection → `.githooks/pre-push` + regras
+    `deny` do `git push` no `.claude/settings.json`.
+- **S5 depois do merge**: deploy do Hosting em `fluxo-app-59174.web.app`
+  (com confirmação) → usuário aponta o DNS de `crm.somosvra.com.br` na
+  Hostinger (A **e AAAA**) → conferir → remover a cópia da Hostinger em até 7 dias.
+- **Próximo passo**: frentes A/B/C. **Não iniciar a Onda 1 (front) sem o
+  usuário autorizar** (pedido explícito em 2026-11-16, reforçado no mesmo dia).
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -30,6 +30,7 @@ Leia antes de começar; atualize antes de encerrar.
 | S2 | Cópia local dos dados; regras de contenção prontas (publicar só com confirmação); backup/PITR | 🟡 |
 | S3 | Onda 0 | ✅ |
 | S4 | Interfaces congeladas na spec (§9) | ✅ |
+| S5 | Hospedagem: `public/`, Firebase Hosting com cabeçalhos, H01–H05, guarda-corpos da `main` | 🟡 |
 
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
@@ -40,8 +41,9 @@ Leia antes de começar; atualize antes de encerrar.
 | 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ⬜ |
 | 4b | Integração e cutover em produção | 2, 3, 4a | — | ⬜ |
 
-Frentes paralelas depois de S1–S4: **A** = Ondas 1 → 3 (`index.html`, sessão
-principal), **B** = Onda 2 (regras), **C** = Onda 4a (E2E).
+Frentes paralelas depois de S1–S5: **A** = Ondas 1 → 3 (`public/index.html`,
+front-end, sessão principal), **B** = Onda 2 (regras do banco), **C** = Onda 4a
+(testes E2E).
 
 ## Decisões
 
@@ -53,7 +55,10 @@ principal), **B** = Onda 2 (regras), **C** = Onda 4a (E2E).
 | 2026-11-16 | Contrato de dados em OpenAPI 3.1 só com `components` (o app não tem API HTTP própria) | `contracts/openapi.v1.yaml` |
 | 2026-11-16 | Regras de contenção provisórias antes do login, compatíveis com o app atual e com o formato da Fase 1 | Spec §5.3 |
 | 2026-11-16 | Emuladores e testes sempre com o projeto `demo-fluxo` (isolado da produção) | Spec §9.2 |
-| 2026-11-16 | Hosting fora do `firebase.json` até decidir a hospedagem (Q2) | Plano, Onda 0 |
+| 2026-11-16 | Firebase Hosting (gratuito) publicando só `public/`; cabeçalhos AISAC no `firebase.json`; CSP rígida em Report-Only até refatorar os handlers inline | ADR-0002, spec de hospedagem |
+| 2026-11-16 | Nenhum plano pago por enquanto (Firebase Spark, GitHub Free) | Decisão do usuário |
+| 2026-11-16 | Supabase avaliado e adiado: reavaliar no ADR da Fase 2 (quando o modelo de dados for refeito); agora atrasaria o fechamento do banco | Conversa de 2026-11-16 |
+| 2026-11-16 | 4ª pessoa: Luiza (`staff`, `routine_Luiza`) | Spec §1 |
 | 2026-11-16 | gitleaks: exceção só da regra `generic-api-key` só em `tests/fixtures/users.json` (senhas fictícias do emulador), via `[[rules.allowlists]]` — sintaxe do gitleaks 8.24 | `.gitleaks.toml`, issue #2 |
 | 2026-11-16 | `.firebaserc` com `default: demo-fluxo`; produção só pelo alias `prod` | `.firebaserc` |
 | 2026-11-16 | Mensagens de commit e títulos de PR em inglês (AISAC git-workflow); docs e UI seguem em pt-BR | — |
@@ -62,8 +67,8 @@ principal), **B** = Onda 2 (regras), **C** = Onda 4a (E2E).
 
 Detalhes e propostas na spec, §8.
 
-- **Q1** — Nome e `personId` da 4ª pessoa (equipe).
-- **Q2** — Onde o `index.html` está hospedado hoje (domínio autorizado no Auth)?
+- ~~Q1~~ — resolvida: Luiza.
+- ~~Q2~~ — resolvida: Hostinger hoje → Firebase Hosting (`crm.somosvra.com.br`).
 - **Q3** — A equipe pode excluir clientes?
 - **Q4** — E-mail corporativo ou pessoal nas contas?
 - **Q5** — "Manter conectado" opcional para computador compartilhado?

@@ -103,6 +103,38 @@ test('validate-edit: index.html com erro de sintaxe bloqueia; válido (módulo +
   assert.equal(run('validate-edit.mjs', { tool_name: 'Edit', tool_input: { file_path: valid } }), 'allow');
 });
 
-test('validate-edit: index.html real do projeto passa', () => {
-  assert.equal(run('validate-edit.mjs', { tool_name: 'Edit', tool_input: { file_path: join(process.cwd(), 'index.html') } }), 'allow');
+test('validate-edit: public/index.html real do projeto passa', () => {
+  assert.equal(run('validate-edit.mjs', { tool_name: 'Edit', tool_input: { file_path: join(process.cwd(), 'public/index.html') } }), 'allow');
+});
+
+// Git hook pre-push (.githooks/pre-push): substituto local da branch protection.
+const ZERO = '0'.repeat(40);
+const SHA_A = 'a'.repeat(40);
+const SHA_B = 'b'.repeat(40);
+function prePush(lines) {
+  const r = spawnSync('sh', [join(process.cwd(), '.githooks/pre-push'), 'origin', 'https://example.invalid/repo.git'], {
+    input: lines.join('\n') + '\n',
+    encoding: 'utf8',
+  });
+  return r.status;
+}
+
+test('pre-push: recusa push direto na main', () => {
+  assert.equal(prePush([`refs/heads/main ${SHA_A} refs/heads/main ${SHA_B}`]), 1);
+});
+
+test('pre-push: recusa outra branch empurrada para a main (HEAD:main)', () => {
+  assert.equal(prePush([`refs/heads/feat/x ${SHA_A} refs/heads/main ${SHA_B}`]), 1);
+});
+
+test('pre-push: recusa apagar a main', () => {
+  assert.equal(prePush([`(delete) ${ZERO} refs/heads/main ${SHA_B}`]), 1);
+});
+
+test('pre-push: permite branch de feature (inclusive nova)', () => {
+  assert.equal(prePush([`refs/heads/chore/x ${SHA_A} refs/heads/chore/x ${ZERO}`]), 0);
+});
+
+test('pre-push: recusa quando qualquer ref do lote é a main', () => {
+  assert.equal(prePush([`refs/heads/chore/x ${SHA_A} refs/heads/chore/x ${ZERO}`, `refs/heads/main ${SHA_A} refs/heads/main ${SHA_B}`]), 1);
 });
