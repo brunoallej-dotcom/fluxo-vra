@@ -51,15 +51,18 @@ agendado), mudanças no `index.html`.
 
 | Diretiva | Origens | Motivo |
 |---|---|---|
-| `script-src` | `'self'`, `cdnjs.cloudflare.com`, `www.gstatic.com` | Chart.js, Sortable, Firebase SDK |
+| `script-src` | `'self'`, `cdnjs.cloudflare.com`, `www.gstatic.com`, `apis.google.com` | Chart.js, Sortable, Firebase SDK; `apis.google.com` é carregado pelo Firebase Auth (resolvedor de popup/redirect) em alguns navegadores |
 | `style-src` | `'self'`, `'unsafe-inline'`, `fonts.googleapis.com` | `<style>` e 120 `style=""` inline (risco baixo; fica fora da dívida principal) |
 | `font-src` | `'self'`, `fonts.gstatic.com`, `data:` | fonte Inter |
 | `img-src` | `'self'`, `data:`, `https:` | logos em base64 e imagens de documentos |
-| `connect-src` | `firestore`, `identitytoolkit`, `securetoken`, `firebaseinstallations` (googleapis), `www.gstatic.com` | Firestore e Firebase Auth |
-| `frame-src` | `drive.google.com`, `docs.google.com` | prévia de documentos de clientes |
+| `connect-src` | `firestore`, `identitytoolkit`, `securetoken`, `firebaseinstallations` (googleapis), `www.gstatic.com`, `apis.google.com` | Firestore e Firebase Auth |
+| `frame-src` | `drive.google.com`, `docs.google.com`, `accounts.google.com`, `*.googleusercontent.com`, `fluxo-app-59174.firebaseapp.com` | prévia de documentos (o Drive pode redirecionar para login/conteúdo do Google) e iframe `/__/auth/iframe` do Firebase Auth |
 | demais | `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` | |
 
 Sem endpoint de relatório: as violações aparecem só no console do navegador.
+As origens do Firebase Auth foram incluídas antes do login existir (revisão do
+PR #7): antes de promover esta CSP a aplicada, validar o login em Chrome,
+Safari e celular, não só no console de um navegador.
 
 ## 4. Migração (passos, nesta ordem)
 
@@ -90,6 +93,7 @@ Automáticos no Hosting Emulator (`npm run test:hosting`, também no CI):
 | H03 | CSP aplicada só com as diretivas seguras; CSP alvo em Report-Only, sem `unsafe-inline` em scripts |
 | H04 | `Cache-Control: no-cache` em `/` e `/index.html` |
 | H05 | arquivos fora de `public/` respondem 404 (RH-01) |
+| H06 | `public/` contém só `index.html` — arquivo novo ali (inclusive oculto) quebra o CI até ser incluído de propósito (RH-01) |
 
 Manuais: passos 3 e 6 da §4.
 

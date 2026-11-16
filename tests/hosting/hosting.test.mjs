@@ -2,6 +2,7 @@
 // Rodam contra o Hosting Emulator: `npm run test:hosting`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 
 const BASE = `http://${process.env.FIREBASE_HOSTING_EMULATOR_HOST ?? '127.0.0.1:5000'}`;
 
@@ -32,7 +33,8 @@ test('H03 CSP aplicada só com diretivas que não quebram o app; CSP rígida em 
   assert.match(enforced, /object-src 'none'/);
   assert.doesNotMatch(enforced, /script-src/); // a rígida ainda quebraria os handlers inline
   const reportOnly = headers.get('content-security-policy-report-only') ?? '';
-  assert.match(reportOnly, /script-src 'self' https:\/\/cdnjs\.cloudflare\.com https:\/\/www\.gstatic\.com;/);
+  assert.match(reportOnly, /script-src 'self' https:\/\/cdnjs\.cloudflare\.com https:\/\/www\.gstatic\.com https:\/\/apis\.google\.com;/);
+  assert.match(reportOnly, /frame-src [^;]*https:\/\/fluxo-app-59174\.firebaseapp\.com/); // iframe do Firebase Auth
   assert.doesNotMatch(reportOnly, /script-src[^;]*'unsafe-inline'/);
 });
 
@@ -41,6 +43,12 @@ test('H04 index.html sem cache (deploys novos chegam na hora)', async () => {
     const { headers } = await get(path);
     assert.equal(headers.get('cache-control'), 'no-cache', path);
   }
+});
+
+test('H06 public/ contém só o que deve ser publicado', () => {
+  // Qualquer arquivo novo em public/ (inclusive oculto) precisa ser incluído aqui de propósito.
+  const published = readdirSync(new URL('../../public/', import.meta.url), { recursive: true }).sort();
+  assert.deepEqual(published, ['index.html']);
 });
 
 test('H05 deny by default: nada fora de public/ é servido', async () => {

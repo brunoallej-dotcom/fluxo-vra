@@ -46,3 +46,6 @@ dados de clientes.
 - CSP aplicada ainda fraca para scripts até a refatoração dos handlers inline.
 - Caminho do arquivo mudou para `public/index.html`: comandos e docs atualizados
   no mesmo PR; frentes paralelas começam depois deste merge.
+- O projeto padrão do repositório (`.firebaserc`) é o `demo-fluxo`: um
+  `firebase deploy` sem `--project prod` não atinge a produção (vai para o
+  projeto demo ou falha). Deploy real sempre com `--project prod`.
