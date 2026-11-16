@@ -1,0 +1,389 @@
+openapi: 3.1.0
+info:
+  title: Fluxo — contrato de dados do Firestore
+  version: 1.0.0
+  summary: Formato dos documentos que o index.html lê e grava no Firestore.
+  description: |
+    O Fluxo não tem API HTTP própria: o navegador fala direto com o Cloud
+    Firestore e o Firebase Authentication pelos SDKs do Google. Por isso este
+    contrato não declara `paths` — ele versiona o formato dos documentos
+    (`components.schemas`), que é o que o app e as regras do Firestore precisam
+    respeitar.
+
+    - A extensão `x-firestore-path` diz onde cada documento mora.
+    - A autorização é feita pelas Firestore Security Rules (`firestore.rules`),
+      não por este arquivo. Ver docs/specs/autenticacao-multiusuario.md §5.2.
+    - Os documentos de dados guardam o conteúdo como texto JSON no campo `data`
+      (`StoredDocument`). O schema do conteúdo decodificado está em
+      `x-decoded-schema`.
+
+    Mudança de formato = nova versão deste arquivo (openapi.v2.yaml) + nota de
+    compatibilidade no NOTES.md.
+  license:
+    name: Proprietário — uso interno
+    identifier: LicenseRef-Proprietary
+paths: {}
+components:
+  schemas:
+    Role:
+      type: string
+      enum: [ceo, staff]
+      description: Papel da pessoa. `ceo` vê a CEO View; `staff` não.
+
+    UserProfile:
+      type: object
+      description: |
+        Perfil e papel de um membro. Criado e alterado só pelo console do
+        Firebase; o cliente nunca grava aqui. O e-mail fica no Firebase Auth,
+        não neste documento (minimização, LGPD).
+      x-firestore-path: fluxo_users/{uid}
+      additionalProperties: false
+      required: [personId, name, initial, role, title, routineId, active]
+      properties:
+        personId:
+          type: string
+          pattern: '^[A-Za-z][A-Za-z0-9_]{0,31}$'
+          description: |
+            Identificador estável da pessoa. É o valor gravado em `Task.owner`
+            e nos participantes de reuniões (ex.: "Bruno", "Julia", "Vinicius").
+          examples: [Vinicius]
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: Nome exibido na interface.
+          examples: [Júlia]
+        initial:
+          type: string
+          minLength: 1
+          maxLength: 2
+          description: Letra(s) do avatar.
+        role:
+          $ref: '#/components/schemas/Role'
+        title:
+          type: string
+          maxLength: 40
+          examples: [Operacional]
+        routineId:
+          type: string
+          pattern: '^routine(_[A-Za-z0-9_]+)?$'
+          description: |
+            ID do documento de rotina em `fluxo/`. Bruno e Júlia compartilham
+            `routine`; as demais pessoas usam `routine_<personId>`.
+          examples: [routine_Vinicius]
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          description: Cor do avatar. Opcional; sem ela o app usa a paleta padrão.
+        active:
+          type: boolean
+          description: |
+            `false` corta o acesso na hora (as regras checam em toda leitura e
+            gravação).
+
+    StoredDocument:
+      type: object
+      description: |
+        Envelope de todo documento de dados gravado pelo app. As regras exigem
+        exatamente estes três campos.
+      additionalProperties: false
+      required: [data, updatedBy, updatedAt]
+      properties:
+        data:
+          type: string
+          maxLength: 900000
+          contentMediaType: application/json
+          description: Conteúdo do documento serializado com JSON.stringify.
+        updatedBy:
+          type: string
+          description: uid (Firebase Auth) de quem fez a última gravação.
+        updatedAt:
+          type: string
+          format: date-time
+          description: |
+            Firestore Timestamp gravado com serverTimestamp(); as regras exigem
+            que seja igual a request.time.
+
+    TasksDocument:
+      allOf:
+        - $ref: '#/components/schemas/StoredDocument'
+      x-firestore-path: fluxo/tasks
+      x-decoded-schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Task'
+
+    MeetingsDocument:
+      allOf:
+        - $ref: '#/components/schemas/StoredDocument'
+      x-firestore-path: fluxo/meetings
+      x-decoded-schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Meeting'
+
+    RoutineDocument:
+      allOf:
+        - $ref: '#/components/schemas/StoredDocument'
+      x-firestore-path: fluxo/{routineId}
+      x-decoded-schema:
+        $ref: '#/components/schemas/Routine'
+
+    ClientDocument:
+      allOf:
+        - $ref: '#/components/schemas/StoredDocument'
+      x-firestore-path: fluxo_clients/{clientId}
+      x-decoded-schema:
+        $ref: '#/components/schemas/Client'
+
+    DateString:
+      type: string
+      pattern: '^\d{4}-\d{2}-\d{2}$'
+      description: Data local no formato AAAA-MM-DD.
+
+    TimeString:
+      type: string
+      pattern: '^(\d{2}:\d{2})?$'
+      description: Hora local HH:MM, ou vazio.
+
+    Task:
+      type: object
+      required: [id, title, date, priority, owner, done]
+      properties:
+        id:
+          type: integer
+          description: Sequencial (maior id + 1).
+        title:
+          type: string
+        desc:
+          type: string
+        date:
+          $ref: '#/components/schemas/DateString'
+        time:
+          $ref: '#/components/schemas/TimeString'
+        duration:
+          type: string
+          description: Duração planejada, texto livre do formulário.
+        category:
+          type: string
+          examples: [Sucesso do Cliente]
+        priority:
+          type: string
+          enum: [urgent, medium, calm]
+        owner:
+          type: string
+          description: personId do responsável (ver UserProfile.personId).
+        done:
+          type: boolean
+        clientId:
+          type: [integer, 'null']
+          description: id do cliente (Client.id) quando a tarefa é de um cliente.
+        fromMeetingId:
+          type: integer
+          description: id da reunião de cliente que originou a tarefa.
+        legacyId:
+          type: integer
+          description: id da tarefa no formato antigo (client.tasks), para migração idempotente.
+        timerRunning:
+          type: boolean
+        timerStartTs:
+          type: [number, 'null']
+          description: Epoch em ms de quando o cronômetro foi iniciado.
+        timerElapsed:
+          type: number
+          description: Tempo acumulado do cronômetro, em ms.
+
+    Meeting:
+      type: object
+      description: Reunião da agenda interna (não confundir com ClientMeeting).
+      required: [id, title, date]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        desc:
+          type: string
+        date:
+          $ref: '#/components/schemas/DateString'
+        time:
+          $ref: '#/components/schemas/TimeString'
+        participants:
+          type: array
+          items:
+            type: string
+            description: personId.
+        meetLink:
+          type: string
+
+    Routine:
+      type: array
+      description: Sete dias, de segunda (índice 0) a domingo (índice 6).
+      minItems: 7
+      maxItems: 7
+      items:
+        type: array
+        items:
+          $ref: '#/components/schemas/RoutineItem'
+
+    RoutineItem:
+      type: object
+      required: [id, type, title, start]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [spiritual, meal, work, gym, church, free]
+        icon:
+          type: string
+        title:
+          type: string
+        start:
+          $ref: '#/components/schemas/TimeString'
+        end:
+          $ref: '#/components/schemas/TimeString'
+        subs:
+          type: array
+          items:
+            type: string
+
+    Client:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          description: Gerado com Date.now() * 1000 + aleatório (hsId).
+        name:
+          type: string
+        segment:
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/DateString'
+        notes:
+          type: string
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Dia do mês de vencimento.
+        contracts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientContract'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientFile'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientPayment'
+        csContacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientCsContact'
+        meetings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientMeeting'
+        tasks:
+          type: array
+          deprecated: true
+          description: Formato antigo; migrado para Task (fluxo/tasks) e esvaziado.
+
+    ClientContract:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        driveUrl:
+          type: string
+          description: Link do Google Drive (só http/https).
+        startDate:
+          $ref: '#/components/schemas/DateString'
+        endDate:
+          $ref: '#/components/schemas/DateString'
+
+    ClientFile:
+      type: object
+      required: [id, name, url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        addedAt:
+          $ref: '#/components/schemas/DateString'
+        addedBy:
+          type: string
+          description: personId de quem adicionou.
+
+    ClientPayment:
+      type: object
+      required: [id, dueDate, amount, status]
+      properties:
+        id:
+          type: integer
+        dueDate:
+          $ref: '#/components/schemas/DateString'
+        amount:
+          type: number
+          description: Valor em reais (BRL).
+        status:
+          type: string
+          enum: [em_dia, pago]
+
+    ClientCsContact:
+      type: object
+      required: [id, date, channel]
+      properties:
+        id:
+          type: integer
+        date:
+          $ref: '#/components/schemas/DateString'
+        channel:
+          type: string
+          enum: [WhatsApp, Ligação, E-mail, Presencial]
+        note:
+          type: string
+
+    ClientMeeting:
+      type: object
+      required: [id, date, title]
+      properties:
+        id:
+          type: integer
+        date:
+          $ref: '#/components/schemas/DateString'
+        title:
+          type: string
+        start:
+          $ref: '#/components/schemas/TimeString'
+        end:
+          $ref: '#/components/schemas/TimeString'
+        tldvUrl:
+          type: string
+          description: Link da gravação (só http/https).
+        transcript:
+          type: string
+        actionPlan:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionPlanItem'
+
+    ActionPlanItem:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        added:
+          type: boolean
+          description: true quando o item já virou tarefa.

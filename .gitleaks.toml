@@ -1,0 +1,18 @@
+# Configuração do gitleaks: regras padrão + uma exceção restrita.
+# Sintaxe compatível com o gitleaks 8.24.x usado pela gitleaks-action v2.3.9
+# (`[[allowlists]]` com `targetRules` só existe em versões mais novas).
+[extend]
+useDefault = true
+
+# nosec generic-api-key — tests/fixtures/users.json guarda senhas FICTÍCIAS de
+# usuários que só existem no Firebase Auth Emulator (projeto demo-fluxo, domínio
+# .test), usadas pelos testes de regras e E2E (spec §9.3). Não há conta real.
+# A exceção vale só para esta regra e só para este arquivo; os demais atributos
+# da regra são herdados da configuração padrão.
+# Tracking: https://github.com/brunoallej-dotcom/fluxo-vra/issues/2
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Senhas fictícias do Auth Emulator na fixture de testes (issue #2)"
+  paths = ['''^tests/fixtures/users\.json$''']
