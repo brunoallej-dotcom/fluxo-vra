@@ -383,7 +383,9 @@ e mobile), e o teste clica no visível.
 ### 9.3 Fixture de usuários de teste
 
 Arquivo `tests/fixtures/users.json`, usado pelas regras (perfis) e pelos E2E
-(contas + perfis). Senhas e e-mails existem só nos emuladores.
+(contas + perfis). Senhas e e-mails existem só nos emuladores. O gitleaks
+ignora este arquivo **só** para a regra `generic-api-key` (`.gitleaks.toml`,
+issue #2); nunca coloque ali uma credencial real.
 
 ```json
 [

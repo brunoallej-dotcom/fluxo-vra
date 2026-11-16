@@ -1,0 +1,13 @@
+# Configuração do gitleaks: regras padrão + uma exceção restrita.
+[extend]
+useDefault = true
+
+# nosec generic-api-key — tests/fixtures/users.json guarda senhas FICTÍCIAS de
+# usuários que só existem no Firebase Auth Emulator (projeto demo-fluxo, domínio
+# .test), usadas pelos testes de regras e E2E (spec §9.3). Não há conta real.
+# A exceção vale só para esta regra e só para este arquivo.
+# Tracking: https://github.com/brunoallej-dotcom/fluxo-vra/issues/2
+[[allowlists]]
+description = "Senhas fictícias do Auth Emulator na fixture de testes (issue #2)"
+targetRules = ["generic-api-key"]
+paths = ['''^tests/fixtures/users\.json$''']
