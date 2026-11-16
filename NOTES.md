@@ -6,21 +6,21 @@ Leia antes de começar; atualize antes de encerrar.
 ## Current status
 
 - **Fase atual**: Fase 1 — autenticação multiusuário (login e senha por pessoa).
-- **Situação**: S1, S3 (Onda 0) e S4 concluídos; S2 parcial. O app em
-  produção ainda **não tem login** e as regras do Firestore continuam abertas
-  (as de contenção estão prontas e testadas, aguardando confirmação para publicar).
-- **PR #1** (rascunho): `chore/onda-0-fundacao` → `main`, com docs + Onda 0 +
-  correções da revisão. Revisão independente: "pode mergear". CI: check,
-  dependências, hooks e regras verdes; gitleaks com exceção restrita à fixture
-  (issue #2) — aguardando o run confirmar.
-- **Caminho AISAC em andamento** (autorizado pelo usuário em 2026-11-16):
-  CI verde → PR pronto → **aprovação do usuário para a supressão do gitleaks**
-  (exigência AISAC; o autor não pode aprovar o próprio PR) → squash merge →
-  deploy das regras de contenção a partir da `main` com `--project prod`
-  (a regra `ask` pede confirmação) → usuário: Blaze + alerta de orçamento →
-  PITR e backup por comando → apagar a cópia local → proteger a `main` → Q2.
-- **Próximo passo depois disso**: frentes paralelas A/B/C. **Não iniciar a
-  Onda 1 sem o usuário autorizar** (pedido explícito em 2026-11-16).
+- **Situação**: S1, S3 (Onda 0) e S4 concluídos; S2 quase concluído. PR #1
+  mergeado na `main` (`56a8538`, squash). **Regras de contenção publicadas em
+  produção em 2026-11-16** e verificadas (leitura do app ok; coleções e
+  documentos fora da lista negados). O app ainda **não tem login** e a
+  **leitura continua pública** até o cutover.
+- **Pendências de S2 (do usuário)**: conferir o plano (Spark/Blaze); se Blaze,
+  criar alerta de orçamento e então ativar PITR + backup diário por comando
+  (com confirmação); depois disso, apagar a cópia local em `backups/`.
+- **Proteção da `main`**: indisponível — o GitHub exige Pro para branch
+  protection/rulesets em repositório privado. Decisão pendente do usuário
+  (assinar Pro ou seguir só com o processo + regra `ask` do `git push`).
+- **Questões abertas que importam agora**: Q2 (hospedagem; recomendação AISAC:
+  Firebase Hosting com headers de segurança no `firebase.json`) e Q1 (4ª pessoa).
+- **Próximo passo**: frentes paralelas A/B/C a partir da `main`. **Não
+  iniciar a Onda 1 sem o usuário autorizar** (pedido explícito em 2026-11-16).
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -71,8 +71,11 @@ Detalhes e propostas na spec, §8.
 
 ## Riscos conhecidos
 
-- **Banco aberto em produção até o cutover** (Onda 4): qualquer pessoa com o ID
-  do projeto lê e grava os dados. Prioridade máxima. **Confirmado em
+- **Leitura pública em produção até o cutover** (Onda 4b): desde 2026-11-16
+  as regras de contenção restringem caminhos, formato, tamanho e exclusões,
+  mas qualquer pessoa com o ID do projeto ainda lê tudo e consegue sobrescrever
+  tarefas/reuniões/clientes no formato aceito. Antes das regras de contenção:
+  leitura e escrita totalmente abertas. **Confirmado em
   2026-11-16** via MCP: regras `match /{document=**} { allow read, write: if true; }`
   (sem prazo de expiração).
 - **Sem recuperação de dados** (confirmado em 2026-11-16): nenhum backup
@@ -105,6 +108,20 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-16 (noite) — caminho AISAC até a contenção em produção
+
+- PR #1 (docs + Onda 0): revisão independente pediu correções (hook de
+  segredos no Bash, falha fechada, guard do MCP como allowlist, permissões do
+  CI, tipos de updatedBy/updatedAt); corrigidas com testes (`tests/hooks`, 41
+  casos) e re-revisão "pode mergear".
+- security-scan: só `npm audit` disponível; 5 high via `grpc-js` dos testes
+  corrigidas com `overrides`; 14 moderate aceitas e registradas.
+- gitleaks: falso positivo nas senhas fictícias da fixture; exceção restrita
+  (issue #2) aprovada pelo usuário.
+- Squash merge na `main` (`56a8538`), CI verde nesse commit, deploy das regras
+  de contenção com `--project prod` e teste pós-deploy em produção (só leitura
+  e gravações negadas; nada alterado).
 
 ### 2026-11-16 (tarde) — pré-requisitos S1–S4
 
