@@ -10,7 +10,7 @@
 ## 1. Visão geral
 
 O Fluxo é um dashboard de produtividade (tarefas, agenda, kanban, health score de
-clientes, CEO View, rotina e relatórios) em um único `index.html`, com dados no
+clientes, CEO View, rotina e relatórios) em um único `public/index.html`, com dados no
 Firebase Firestore. Foi feito para uso pessoal e agora vai ser usado pela empresa.
 
 **Problema.** Hoje não existe autenticação:
@@ -35,7 +35,7 @@ identidade e o papel (CEO ou equipe) vêm da conta, nunca do navegador.
 | `Bruno` | Bruno | `ceo` | Operacional | `routine` |
 | `Julia` | Júlia | `ceo` | Estratégia | `routine` |
 | `Vinicius` | Vinicius | `staff` | Equipe | `routine_Vinicius` |
-| _a definir (Q1)_ | _a definir_ | `staff` | Equipe | `routine_<personId>` |
+| `Luiza` | Luiza | `staff` | Equipe | `routine_Luiza` |
 
 O `personId` é igual ao valor que as tarefas já gravam em `owner`, então os dados
 existentes não precisam de migração.
@@ -335,8 +335,8 @@ Checklist da Onda 4 em `docs/plan/implementation-waves.md`.
 
 | ID | Pergunta | Proposta enquanto não houver resposta |
 |---|---|---|
-| Q1 | Nome e `personId` da 4ª pessoa (equipe)? | Placeholder; não bloqueia as Ondas 0–3 |
-| Q2 | Onde o `index.html` está hospedado hoje? O domínio precisa estar em "Domínios autorizados" do Auth. | Firebase Hosting (já inclui o domínio autorizado) |
+| Q1 | ~~Nome e `personId` da 4ª pessoa (equipe)?~~ | **Resolvida (2026-11-16):** Luiza (`personId: Luiza`, `routine_Luiza`) |
+| Q2 | ~~Onde o `index.html` está hospedado hoje?~~ | **Resolvida (2026-11-16):** hoje Hostinger em `crm.somosvra.com.br`; vai para o Firebase Hosting ([spec](hospedagem.md), ADR-0002). Adicionar `crm.somosvra.com.br` aos domínios autorizados do Auth no cutover |
 | Q3 | A equipe pode excluir clientes? Hoje pode. | Manter como está nesta fase |
 | Q4 | As contas usam e-mail corporativo ou pessoal? | Qualquer e-mail; o acesso é controlado por `fluxo_users` |
 | Q5 | Precisa de "Manter conectado" (sessão só da aba) para computador compartilhado? | Fora do MVP |

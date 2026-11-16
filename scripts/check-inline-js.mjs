@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Checa o index.html sem build:
+// Checa o public/index.html sem build:
 // 1. sintaxe de cada <script> inline (node --check);
 // 2. todos os módulos do Firebase SDK carregados do gstatic na mesma versão.
-// Uso: node scripts/check-inline-js.mjs [index.html]
+// Uso: node scripts/check-inline-js.mjs [public/index.html]
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 
-const file = process.argv[2] ?? 'index.html';
+const file = process.argv[2] ?? 'public/index.html';
 const html = readFileSync(file, 'utf8');
 const errors = [];
 

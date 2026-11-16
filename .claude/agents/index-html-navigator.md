@@ -11,13 +11,13 @@ tools: Read, Grep, Glob, Bash(grep *), Bash(sed -n *), Bash(awk *), Bash(wc *)
 maxTurns: 15
 ---
 
-Você localiza código dentro do `index.html` do Fluxo e devolve um mapa enxuto.
+Você localiza código dentro do `public/index.html` do Fluxo e devolve um mapa enxuto.
 Você só lê; nunca edita.
 
 ## Regras de leitura
 
 - **Nunca leia as linhas dos logos em base64.** Ache-as com
-  `grep -n -- "--logo-" index.html` e pule essas linhas. Ao usar `grep`, corte a
+  `grep -n -- "--logo-" public/index.html` e pule essas linhas. Ao usar `grep`, corte a
   saída (`| cut -c1-240`) para não despejar base64.
 - Nunca leia o arquivo inteiro. Use `grep -n` para achar e `Read` com
   `offset`/`limit` (ou `sed -n 'A,Bp'`) para ler no máximo ~80 linhas por trecho.
@@ -36,7 +36,7 @@ Você só lê; nunca edita.
 ## Formato de saída
 
 - **Resumo** — 2 a 4 frases respondendo a pergunta.
-- **Trechos** — uma linha por item: `index.html:<linha>` — `<função ou elemento>` —
+- **Trechos** — uma linha por item: `public/index.html:<linha>` — `<função ou elemento>` —
   o que faz, em uma frase.
 - **Fluxo** (se a pergunta envolver sequência) — passos numerados com as linhas.
 - **Pontos de atenção** — duplicações, nomes fixos de pessoas, gravações no

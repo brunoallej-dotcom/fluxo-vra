@@ -1,0 +1,16 @@
+#!/bin/sh
+# Recusa push direto na main (inclusive exclusão e force push).
+# Substituto local da branch protection, indisponível no GitHub Free para
+# repositório privado. Não é imposto pelo servidor: um push de outra máquina
+# ou pela interface web passa. Ativado por `npm install` (script prepare),
+# que roda `git config core.hooksPath .githooks`.
+#
+# Entrada (stdin), uma linha por ref: <local ref> <local sha> <remote ref> <remote sha>
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: push direto na main bloqueado ($local_ref -> main). Abra um PR e faça squash merge com o CI verde." >&2
+    status=1
+  fi
+done
+exit $status
