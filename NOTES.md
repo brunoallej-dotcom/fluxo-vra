@@ -16,9 +16,13 @@ Leia antes de começar; atualize antes de encerrar.
     (recomendado ao usuário criptografar com `gpg -c`);
   - proteção da `main`: sem branch protection → `.githooks/pre-push` + regras
     `deny` do `git push` no `.claude/settings.json`.
-- **S5 depois do merge**: deploy do Hosting em `fluxo-app-59174.web.app`
-  (com confirmação) → usuário aponta o DNS de `crm.somosvra.com.br` na
-  Hostinger (A **e AAAA**) → conferir → remover a cópia da Hostinger em até 7 dias.
+- **S5**: PR #7 mergeado (`6088d65`); **Hosting publicado em
+  `https://fluxo-app-59174.web.app` em 2026-11-16** (1 arquivo; conteúdo
+  idêntico ao repositório; cabeçalhos e 404s conferidos). Falta: usuário testar
+  o `web.app` → adicionar `crm.somosvra.com.br` no Firebase Hosting → trocar no
+  DNS da Hostinger os registros A (`147.79.105.97`, `89.116.213.174`) **e AAAA**
+  (`2a02:4780:18:32c5:cb42:3167:70b3:7d8f`, `2a02:4780:2e:ac05:32af:77b2:2448:82d0`)
+  pelos do Firebase → conferir → remover a cópia da Hostinger em até 7 dias.
 - **Próximo passo**: frentes A/B/C. **Não iniciar a Onda 1 (front) sem o
   usuário autorizar** (pedido explícito em 2026-11-16, reforçado no mesmo dia).
 
