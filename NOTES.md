@@ -19,10 +19,11 @@ Leia antes de começar; atualize antes de encerrar.
 - **S5**: PR #7 mergeado (`6088d65`); **Hosting publicado em
   `https://fluxo-app-59174.web.app` em 2026-11-16** (1 arquivo; conteúdo
   idêntico ao repositório; cabeçalhos e 404s conferidos). Falta: usuário testar
-  o `web.app` → adicionar `crm.somosvra.com.br` no Firebase Hosting → trocar no
-  DNS da Hostinger os registros A (`147.79.105.97`, `89.116.213.174`) **e AAAA**
-  (`2a02:4780:18:32c5:cb42:3167:70b3:7d8f`, `2a02:4780:2e:ac05:32af:77b2:2448:82d0`)
-  pelos do Firebase → conferir → remover a cópia da Hostinger em até 7 dias.
+  o `web.app` → adicionar `crm.somosvra.com.br` (subdomínio) no Firebase
+  Hosting → no DNS da Hostinger, capturar a tela dos registros `crm` (plano de
+  volta; os IPs resolvidos mudam por causa da CDN `hcdn`), trocar só os A **e
+  AAAA** de `crm` pelos do Firebase → conferir → remover a cópia da Hostinger em
+  até 7 dias sem apagar os registros DNS `crm` (spec de hospedagem §4).
 - **Próximo passo**: frentes A/B/C. **Não iniciar a Onda 1 (front) sem o
   usuário autorizar** (pedido explícito em 2026-11-16, reforçado no mesmo dia).
 

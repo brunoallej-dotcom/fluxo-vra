@@ -76,15 +76,25 @@ Safari e celular, não só no console de um navegador.
 4. **Usuário**, no console do Firebase → Hosting → *Adicionar domínio personalizado* →
    `crm.somosvra.com.br`: o console mostra um registro TXT de verificação e os
    registros A do Firebase.
-5. **Usuário**, no hPanel da Hostinger (DNS de `somosvra.com.br`): criar o TXT;
-   **remover** os registros A (hoje `147.79.105.97`, `89.116.213.174`) **e AAAA**
-   (IPv6 `2a02:4780:…`) de `crm`; criar os A indicados pelo Firebase. Sem remover
-   os AAAA, quem usa IPv6 continua indo para a Hostinger.
+5. **Usuário**, no hPanel da Hostinger → Domínios → `somosvra.com.br` →
+   Registros DNS. `crm` é um **subdomínio**: o campo *Nome* recebe só a parte
+   antes do domínio (`crm`, ou `_acme-challenge.crm` se o Firebase pedir).
+   - **Antes de mudar, capturar a tela dos registros com Nome `crm`** (plano de
+     volta). Não anotar IPs resolvidos: o `crm` passa pela CDN da Hostinger
+     (`hcdn`), que devolve IPs diferentes a cada consulta.
+   - Criar o TXT; **apagar só os A e AAAA com Nome `crm`**; criar os A do
+     Firebase. Sem apagar os AAAA, quem usa IPv6 continua indo para a Hostinger.
+   - Não tocar em `@`, `www` nem `NS`. Se a CDN da Hostinger estiver ativa para
+     o site `crm`, desativá-la (senão ela continua respondendo no lugar do Firebase).
+   - Conferido em 2026-11-16: sem registros CAA (nada bloqueia o certificado) e
+     sem MX no domínio raiz.
 6. Aguardar o certificado (até 24 h) e conferir `curl -I https://crm.somosvra.com.br`.
-7. Manter a cópia da Hostinger por até 7 dias como plano de volta; depois, removê-la.
+7. Manter a cópia da Hostinger por até 7 dias como plano de volta; depois,
+   apagar **só os arquivos/site** do subdomínio e conferir que os registros DNS
+   `crm` continuam apontando para o Firebase (excluir o subdomínio no painel de
+   hospedagem pode apagar os registros DNS junto).
 
-**Plano de volta:** restaurar os registros A/AAAA da Hostinger (anotar os valores
-antes do passo 5).
+**Plano de volta:** recriar os registros `crm` conforme a captura de tela do passo 5.
 
 ## 5. Testes
 
