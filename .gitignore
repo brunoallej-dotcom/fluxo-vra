@@ -3,3 +3,23 @@
 node_modules
 venv
 settings.local.json
+.mcp.json
+
+# Firebase: credenciais e artefatos locais
+*adminsdk*.json
+*service-account*.json
+.firebase/
+firebase-debug*.log
+firestore-debug*.log
+ui-debug*.log
+
+# Memória local de agents do Claude Code
+.claude/agent-memory-local/
+
+# Cópias locais dos dados de produção (contêm dados de clientes)
+backups/
+
+# Artefatos de teste
+test-results/
+playwright-report/
+coverage/
