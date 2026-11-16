@@ -1,0 +1,69 @@
+[
+  {
+    "key": "ceo",
+    "uid": "uid-ceo-bruno",
+    "email": "bruno@fluxo.test",
+    "password": "emulador-ceo-2026",
+    "profile": {
+      "personId": "Bruno",
+      "name": "Bruno",
+      "initial": "B",
+      "role": "ceo",
+      "title": "Operacional",
+      "routineId": "routine",
+      "active": true
+    }
+  },
+  {
+    "key": "ceo2",
+    "uid": "uid-ceo-julia",
+    "email": "julia@fluxo.test",
+    "password": "emulador-ceo2-2026",
+    "profile": {
+      "personId": "Julia",
+      "name": "Júlia",
+      "initial": "J",
+      "role": "ceo",
+      "title": "Estratégia",
+      "routineId": "routine",
+      "active": true
+    }
+  },
+  {
+    "key": "staff",
+    "uid": "uid-staff-vinicius",
+    "email": "vinicius@fluxo.test",
+    "password": "emulador-staff-2026",
+    "profile": {
+      "personId": "Vinicius",
+      "name": "Vinicius",
+      "initial": "V",
+      "role": "staff",
+      "title": "Equipe",
+      "routineId": "routine_Vinicius",
+      "active": true
+    }
+  },
+  {
+    "key": "inactive",
+    "uid": "uid-staff-inativo",
+    "email": "inativo@fluxo.test",
+    "password": "emulador-inativo-2026",
+    "profile": {
+      "personId": "Inativo",
+      "name": "Pessoa Inativa",
+      "initial": "I",
+      "role": "staff",
+      "title": "Equipe",
+      "routineId": "routine_Inativo",
+      "active": false
+    }
+  },
+  {
+    "key": "noprofile",
+    "uid": "uid-sem-perfil",
+    "email": "semperfil@fluxo.test",
+    "password": "emulador-semperfil-2026",
+    "profile": null
+  }
+]
