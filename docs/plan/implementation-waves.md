@@ -23,7 +23,7 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`public/index.html`) | 0, S4 | 2, 4a | ✅ |
 | 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ✅ (não publicada — só no cutover) |
-| 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`public/index.html`) | 1 | 2, 4a | ⬜ |
+| 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`public/index.html`) | 1 | 2, 4a | ✅ |
 | 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração (E2E verde com 1+2+3+4a) e cutover em produção | 2, 3, 4a | — | ⬜ |
 

@@ -11,7 +11,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, connectFirestoreEmulator, doc, getDoc, getDocs, setDoc, deleteDoc, collection, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { initializeAuth, connectAuthEmulator, browserLocalPersistence, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ── CONFIGURAÇÃO FIREBASE ─────────────────────────────────────────────────
@@ -37,7 +37,7 @@
       connectAuthEmulator(auth, 'http://127.0.0.1:9099');
       connectFirestoreEmulator(db, '127.0.0.1', 8080);
     }
-    window._fb = { auth, db, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot, signInWithEmailAndPassword, sendPasswordResetEmail, signOut };
+    window._fb = { auth, db, doc, getDoc, getDocs, setDoc, deleteDoc, collection, onSnapshot, serverTimestamp, signInWithEmailAndPassword, sendPasswordResetEmail, signOut };
     window._fbReady = true;
     document.dispatchEvent(new Event('firebase-ready'));
     onAuthStateChanged(auth, user => window.handleAuthStateChanged(user), e => window.handleFirebaseFailure(e));
@@ -1938,6 +1938,7 @@ function stopSession() {
   Object.values(charts).forEach(chart => chart.destroy()); charts = {};
   tasks = []; meetings = []; clients = []; routineData = emptyRoutine(); activeTimers = {};
   nextId = 1; nextMid = 1; _tasksLoaded = false; _clientsLoaded = false;
+  stateRev = 0; stateSavedRev = 0; setPeople([]);
   editingTaskId = null; editingMeetingId = null; editingRoutineBlock = null; addingRoutineDay = null;
   hsOpenClientId = null; hsEditingClientId = null; hsEditingDocId = null; hsSelMeetingId = null; hsMtId = null; hsMtPlan = [];
   selectedOwner = ''; ceoSelected = null; window._ceoDay = null;
@@ -1957,8 +1958,9 @@ function stopSession() {
   Object.assign(SYNC, {state:'connecting', msg:'Conectando ao banco de dados…', last:null, pending:0, writeFailed:false});
   document.getElementById('loginPassword').value = '';
 }
-function validProfile(profile) {
-  return profile && profile.active === true && typeof profile.personId === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(profile.personId)
+// requireActive=false: régua do formato (usada na lista de pessoas, que inclui inativos)
+function validProfile(profile, requireActive = true) {
+  return profile && (!requireActive || profile.active === true) && typeof profile.personId === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(profile.personId)
     && typeof profile.name === 'string' && profile.name.trim().length > 0 && profile.name.length <= 60
     && typeof profile.initial === 'string' && profile.initial.length > 0 && profile.initial.length <= 2
     && ['ceo', 'staff'].includes(profile.role) && typeof profile.title === 'string' && profile.title.length <= 40
@@ -2000,7 +2002,16 @@ async function handleAuthStateChanged(user) {
     loginNotice = '';
     document.getElementById('loginError').textContent = '';
     document.getElementById('loginPassword').value = '';
+    // RF-06: lista de pessoas antes de iniciar a sessão. Erro aqui não derruba a sessão:
+    // segue só com o próprio perfil, avisa e tenta de novo em segundo plano.
+    const session = window._session;
+    let people = null, peopleError = null;
+    try { people = await loadPeople(session.profile); }
+    catch (e) { peopleError = e; console.error(e.code); }
+    if (version !== sessionVersion || session !== window._session) return;
+    setPeople(people || buildPeople([], session.profile));
     document.dispatchEvent(new Event('fluxo-session-start'));
+    if (peopleError && session === window._session) handlePeopleFailure(session, peopleError);
   } catch (e) {
     if (version !== sessionVersion) return;
     console.error(e.code);
@@ -2026,6 +2037,35 @@ function verifyAccessAfterDenied(session, onStillMember) {
       if (err.code === 'permission-denied') { endAccess('Seu acesso foi encerrado.'); return; }
       onStillMember();
     });
+}
+// Falha ao carregar a lista de pessoas (RF-06): mantém a sessão com o próprio perfil e tenta de novo.
+// permission-denied só encerra o acesso se o perfil realmente deixou de valer (verifyAccessAfterDenied).
+function handlePeopleFailure(session, e) {
+  const notice = () => {
+    if (session !== window._session) return;
+    syncSet('warn', 'Não foi possível carregar a lista de pessoas (' + (e.code || 'erro') + '). Alguns nomes podem aparecer incompletos; vou tentar de novo.');
+    toast('Não foi possível carregar a lista de pessoas. Tentando de novo…', 'warning');
+    retryPeople(session, 0);
+  };
+  if (e.code === 'permission-denied') { verifyAccessAfterDenied(session, notice); return; }
+  notice();
+}
+function retryPeople(session, attempt) {
+  const delays = [10000, 30000, 60000];
+  if (attempt >= delays.length) return;
+  sessionTimeout(async () => {
+    try {
+      const people = await loadPeople(session.profile);
+      if (session !== window._session) return;
+      setPeople(people);
+      renderPeopleUI();
+      renderCurrentPage();
+      if (SYNC.state === 'warn' && /lista de pessoas/.test(SYNC.msg)) syncOk();
+    } catch (e) {
+      console.error(e.code);
+      retryPeople(session, attempt + 1);
+    }
+  }, delays[attempt]);
 }
 function handleFirebaseFailure(e) {
   console.error(e?.code);
@@ -2078,17 +2118,61 @@ async function logout() {
 }
 
 // ─── PESSOAS ─────────────────────────────────────────────────────────────────
-const PEOPLE = [
-  {id:'Bruno',    name:'Bruno',    initial:'B', role:'ceo',   title:'Operacional'},
-  {id:'Julia',    name:'Júlia',    initial:'J', role:'ceo',   title:'Estratégia'},
-  {id:'Vinicius', name:'Vinicius', initial:'V', role:'staff', title:'Equipe'},
-];
+// Vem de fluxo_users (RF-06). Nome, título, iniciais e cor são dados não confiáveis:
+// todo HTML que os use passa por escHtml; cor só no formato #RRGGBB; id só pela regex do validProfile.
+let PEOPLE = [];
+const AV_STATIC = ['bruno', 'julia', 'vinicius']; // pessoas que já têm classe de cor no CSS
+const AV_PALETTE = ['#0E9F8E', '#8B5CF6', '#D6336C', '#2F9E44', '#B7791F', '#0B7285', '#C2255C', '#5C7CFA'];
+function paletteColor(personId){ let h = 0; for (const ch of personId) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AV_PALETTE[h % AV_PALETTE.length]; }
 function person(id){ return PEOPLE.find(p => p.id === id) || null; }
+function activePerson(id){ const p = person(id); return p && p.active ? p : null; }
+function activePeople(){ return PEOPLE.filter(p => p.active); }
 function ownerName(id){ const p = person(id); return p ? p.name : (id || '—'); }
 function ownerInit(id){ const p = person(id); return p ? p.initial : '?'; }
-function avKey(id){ return person(id) ? id.toLowerCase() : 'unknown'; }
-function avatarHtml(id, cls){ return `<span class="${cls || 'mini-av'} ${avKey(id)}" title="${escHtml(ownerName(id))}">${ownerInit(id)}</span>`; }
+function avKey(id){ const p = person(id); if(!p) return 'unknown'; const k = p.id.toLowerCase(); return AV_STATIC.includes(k) ? k : 'pp-' + k; }
+function avatarHtml(id, cls){ return `<span class="${cls || 'mini-av'} ${avKey(id)}" title="${escHtml(ownerName(id))}">${escHtml(ownerInit(id))}</span>`; }
 function isCeo(id){ const p = person(id); return !!p && p.role === 'ceo'; }
+// Lista de pessoas a partir dos perfis: ignora inválidos, um por personId (prefere o ativo),
+// inclui o próprio perfil se faltar e ordena CEOs primeiro e depois por nome.
+function buildPeople(profiles, self) {
+  const byId = new Map();
+  [...profiles, self].forEach(pr => {
+    if (!validProfile(pr, false)) return;
+    const active = pr.active === true, cur = byId.get(pr.personId);
+    if (cur && (cur.active || !active)) return;
+    byId.set(pr.personId, {id:pr.personId, name:pr.name.trim(), initial:pr.initial, role:pr.role, title:pr.title, color:pr.color || '', active});
+  });
+  return [...byId.values()].sort((a, b) => (a.role === 'ceo') !== (b.role === 'ceo') ? (a.role === 'ceo' ? -1 : 1) : a.name.localeCompare(b.name, 'pt-BR'));
+}
+async function loadPeople(self) {
+  const { db, collection, getDocs } = window._fb;
+  const snap = await getDocs(collection(db, 'fluxo_users'));
+  return buildPeople(snap.docs.map(d => d.data()), self);
+}
+// CSS de cor para quem não tem classe no CSS estático (RF-12): cor do perfil ou da paleta pelo personId.
+function peopleStyleCss(list) {
+  const mix = (rgb, to, t) => rgb.map(c => Math.round(c + (to - c) * t)).join(',');
+  return list.filter(p => !AV_STATIC.includes(p.id.toLowerCase())).map(p => {
+    const hex = /^#[0-9A-Fa-f]{6}$/.test(p.color) ? p.color : paletteColor(p.id);
+    const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)), k = 'pp-' + p.id.toLowerCase();
+    const c = rgb.join(','), soft = `rgba(${c},0.16)`;
+    return `.mini-av.${k}, .avatar-btn.${k}, .tm-av.${k}, .ceo-avatar.${k} { background:rgb(${mix(rgb, 255, 0.8)}); color:rgb(${mix(rgb, 0, 0.65)}); }
+[data-theme="dark"] .mini-av.${k}, [data-theme="dark"] .avatar-btn.${k}, [data-theme="dark"] .tm-av.${k}, [data-theme="dark"] .ceo-avatar.${k} { background:rgba(${c},0.25); color:rgb(${mix(rgb, 255, 0.75)}); }
+.owner-${k} { background:${soft}; color:${hex}; border:1px solid rgba(${c},0.3); }
+.owner-btn.selected.sel-${k} { border-color:${hex}; background:${soft}; color:${hex}; }
+.drawer .owner-btn.selected.sel-${k} { border-color:${hex}; background:${soft}; color:var(--text); box-shadow:inset 0 0 0 1px ${hex}; }
+.tm-bar i.plan.${k} { background:rgba(${c},0.28); }
+.tm-bar div.${k}:not(.over) { background:${hex}; }`;
+  }).join('\n');
+}
+function setPeople(list) {
+  PEOPLE = list;
+  let el = document.getElementById('peopleStyle');
+  if (!list.length) { el?.remove(); meetingParticipants = []; return; }
+  if (!el) { el = document.createElement('style'); el.id = 'peopleStyle'; document.head.appendChild(el); }
+  el.textContent = peopleStyleCss(list);
+  meetingParticipants = activePeople().filter(p => p.role === 'ceo').map(p => p.id);
+}
 function me(){ const profile = window._session?.profile; return profile ? {...profile, id:profile.personId} : null; }
 function meId(){ return me()?.id || ''; }
 function iAmCeo(){ return me()?.role === 'ceo'; }
@@ -2130,17 +2214,40 @@ function syncOk() {
   syncSet(SYNC.pending > 0 ? 'saving' : 'ok', 'Dados sincronizados com o time.');
 }
 function syncDetail() { toast(SYNC.msg, SYNC.state === 'err' ? 'warning' : 'info'); }
-// Acompanha uma gravação no Firestore (setDoc/deleteDoc) e reflete o resultado no indicador
+// Acompanha uma gravação no Firestore (fbWrite/deleteDoc) e reflete o resultado no indicador.
+// Resolve true se o servidor confirmou a gravação, false se falhou ou a sessão mudou.
 function syncTrack(promise) {
   const session = window._session;
   SYNC.pending++;
   if (SYNC.state !== 'err') syncSet('saving', 'Salvando no banco de dados…');
   const slow = sessionTimeout(() => syncSet('warn', 'O servidor não confirmou a gravação em 10s. Pode estar sem internet; o que você salvou ainda não chegou ao time.'), 10000);
-  return promise.then(() => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = false; syncOk(); })
-    .catch(e => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = true; console.error(e.code);
+  return promise.then(() => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return false; SYNC.pending--; SYNC.writeFailed = false; syncOk(); return true; })
+    .catch(e => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return false; SYNC.pending--; SYNC.writeFailed = true; console.error(e.code);
       const showWriteError = () => syncSet('err', 'Não foi possível salvar no banco (' + (e.code || 'erro') + '). O que você salvou fica só neste navegador e o time não vê.');
-      if (e.code === 'permission-denied') { verifyAccessAfterDenied(session, showWriteError); return; }
-      showWriteError(); });
+      if (e.code === 'permission-denied') { verifyAccessAfterDenied(session, showWriteError); return false; }
+      showWriteError(); return false; });
+}
+// Única porta de escrita de dados no Firestore (RF-11, spec §3.3): sempre o documento inteiro,
+// no envelope { data, updatedBy, updatedAt } que as regras exigem. Nunca update parcial (teste X15).
+function fbWrite(path, value) {
+  const { db, doc, setDoc, serverTimestamp } = window._fb;
+  return syncTrack(setDoc(doc(db, ...path), {
+    data: JSON.stringify(value),
+    updatedBy: window._session.uid,
+    updatedAt: serverTimestamp(),
+  }));
+}
+// Leitura segura de um documento { data: "<JSON>" }: dado ilegível ou fora do formato esperado
+// não pode quebrar a tela de todos (devolve null e registra só o tipo do erro).
+function parseStored(snap, isValid) {
+  try { const value = JSON.parse(snap.data().data); return isValid(value) ? value : null; }
+  catch (e) { console.error(e.name); return null; }
+}
+const isObjectList = v => Array.isArray(v) && v.every(item => item && typeof item === 'object');
+const isRoutineData = v => Array.isArray(v) && v.length === 7 && v.every(Array.isArray);
+function syncUnreadable(what) {
+  const msg = 'Os dados de ' + what + ' no banco estão ilegíveis. A tela mantém o que já tinha; avise um CEO.';
+  syncSet('err', msg); toast(msg, 'warning');
 }
 function syncListenError(e) {
   const session = window._session;
@@ -2154,15 +2261,20 @@ function syncSnapshotOk(snap) { if (!snap.metadata.fromCache && !SYNC.writeFaile
 window.addEventListener('offline', () => { if (window._session) syncSet('err', 'Sem conexão com a internet. O que você salvar fica só neste navegador.'); });
 window.addEventListener('online', () => { if (window._session) syncSet('connecting', 'Reconectando…'); });
 
+// Controle de alteração local das tarefas (RF-16): cada saveState é uma revisão; só conta como
+// salva quando o servidor confirma (ou quando o snapshot do servidor passa a ser o nosso estado).
+// O autosave só grava se houver revisão ainda não salva — aba esquecida aberta não regrava nada.
+let stateRev = 0, stateSavedRev = 0;
 function saveState() {
   if (!window._session) return;
   localStorage.setItem('fluxo_tasks', JSON.stringify(tasks));
+  const rev = ++stateRev;
   // Sincroniza com Firebase se disponível
   if (window._fbReady) {
-    const { db, doc, setDoc } = window._fb;
-    syncTrack(setDoc(doc(db, 'fluxo', 'tasks'), { data: JSON.stringify(tasks) }));
+    fbWrite(['fluxo', 'tasks'], tasks).then(saved => { if (saved && rev > stateSavedRev) stateSavedRev = rev; });
   }
 }
+function autosaveTick() { if (window._session && stateRev > stateSavedRev) saveState(); }
 
 let _tasksLoaded = false, _clientsLoaded = false;
 function hsMigrateWhenReady() { if (window._session && _tasksLoaded && _clientsLoaded) hsMigrateLegacyTasks(); }
@@ -2197,26 +2309,33 @@ function syncFromFirebase() {
   // Tarefas
   syncUnsubscribers.push(onSnapshot(doc(db, 'fluxo', 'tasks'), snap => {
     if (session !== window._session) return;
+    const remote = snap.exists() ? parseStored(snap, isObjectList) : null;
+    // Documento ilegível: não vira "carregado" (a migração legada não pode gravar por cima dele).
+    if (snap.exists() && !remote) { syncUnreadable('tarefas'); return; }
     syncSnapshotOk(snap);
-    if (snap.exists()) {
-      const remote = JSON.parse(snap.data().data);
+    if (remote) {
+      // O servidor passou a ser o nosso estado: não há mais alteração local a regravar.
+      if (!snap.metadata.hasPendingWrites && SYNC.pending === 0) stateSavedRev = stateRev;
       tasks = remote;
-      nextId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 1;
+      nextId = tasks.length ? Math.max(...tasks.map(t=>Number(t.id)||0))+1 : 1;
       tasks.forEach(t => { if(!t.owner) t.owner = 'Bruno'; });
       if(typeof restoreActiveTimers === 'function') restoreActiveTimers();
       localStorage.setItem('fluxo_tasks', JSON.stringify(tasks));
       renderDashboard();
       hsRefreshIfVisible();
     }
-    _tasksLoaded = true;
-    hsMigrateWhenReady();
+    // Só o servidor (ou um documento real) libera a migração legada: um snapshot vazio
+    // vindo do cache faria a migração regravar o cache local velho por cima do banco.
+    if (!snap.metadata.fromCache || remote) { _tasksLoaded = true; hsMigrateWhenReady(); }
   }, onError));
 
   // Reuniões
   syncUnsubscribers.push(onSnapshot(doc(db, 'fluxo', 'meetings'), snap => {
     if (session !== window._session) return;
-    if (snap.exists()) {
-      meetings = JSON.parse(snap.data().data);
+    const remote = snap.exists() ? parseStored(snap, isObjectList) : null;
+    if (snap.exists() && !remote) { syncUnreadable('reuniões'); return; }
+    if (remote) {
+      meetings = remote;
       nextMid = meetings.length ? Math.max(...meetings.map(m=>m.id||0))+1 : 1;
       localStorage.setItem('fluxo_meetings', JSON.stringify(meetings));
       if (typeof renderMiniCal === 'function') renderMiniCal();
@@ -2227,7 +2346,7 @@ function syncFromFirebase() {
   syncUnsubscribers.push(onSnapshot(collection(db, 'fluxo_clients'), snap => {
     if (session !== window._session) return;
     syncSnapshotOk(snap);
-    const remote = snap.docs.map(d => { try { return JSON.parse(d.data().data); } catch(e) { return null; } }).filter(Boolean);
+    const remote = snap.docs.map(d => parseStored(d, v => v && typeof v === 'object' && !Array.isArray(v))).filter(Boolean);
     if (snap.metadata.fromCache && remote.length === 0) return; // não apaga o local por causa de um cache vazio
     clients = remote;
     hsPersist();
@@ -2235,7 +2354,7 @@ function syncFromFirebase() {
     if (!snap.metadata.fromCache || remote.length) { _clientsLoaded = true; hsMigrateWhenReady(); }
   }, onError));
 
-  // Rotina (uma por pessoa: Vinicius tem a dele, Bruno/Júlia compartilham)
+  // Rotina (uma por perfil: o routineId do perfil; Bruno e Júlia compartilham `routine`)
   subscribeRoutine();
 }
 
@@ -2248,8 +2367,10 @@ function subscribeRoutine() {
   const session = window._session;
   _routineUnsub = onSnapshot(doc(db, 'fluxo', key), snap => {
     if (session !== window._session || key !== routineKey()) return;
-    if (snap.exists()) {
-      routineData = JSON.parse(snap.data().data);
+    const remote = snap.exists() ? parseStored(snap, isRoutineData) : null;
+    if (snap.exists() && !remote) { syncUnreadable('rotina'); return; }
+    if (remote) {
+      routineData = remote;
       localStorage.setItem(lsKey, JSON.stringify(routineData));
       if (typeof renderRoutine === 'function') renderRoutine();
     }
@@ -2281,10 +2402,7 @@ let nextMid = 1;
 const saveMeetings = () => {
   if (!window._session) return;
   localStorage.setItem('fluxo_meetings', JSON.stringify(meetings));
-  if (window._fbReady) {
-    const { db, doc, setDoc } = window._fb;
-    syncTrack(setDoc(doc(db, 'fluxo', 'meetings'), { data: JSON.stringify(meetings) }));
-  }
+  if (window._fbReady) fbWrite(['fluxo', 'meetings'], meetings);
 };
 
 let selectedOwner = meId();
@@ -2294,7 +2412,7 @@ let kanbanPriorityFilter = 'all';
 let currentReportTab = 'geral';
 let ceoSelected = null;
 let editingMeetingId = null;
-let meetingParticipants = PEOPLE.filter(p=>p.role==='ceo').map(p=>p.id);
+let meetingParticipants = []; // preenchido em setPeople (CEOs ativos)
 
 function ownerBadge(owner) {
   if(person(owner)) return `<span class="owner-badge owner-${avKey(owner)}">${escHtml(ownerName(owner))}</span>`;
@@ -2304,11 +2422,11 @@ function ownerBadge(owner) {
 // ─── UI POR PESSOA / IDENTIDADE ──────────────────────────────────────────────
 function peopleAvatarsHtml(){
   if(!iAmCeo()) return '';
-  return PEOPLE.map(p => `<button class="avatar-btn ${avKey(p.id)}" onclick="showPage('ceo',null);selectCEO('${p.id}')" title="CEO View — ${escHtml(p.name)}">${p.initial}</button>`).join('');
+  return activePeople().map(p => `<button class="avatar-btn ${avKey(p.id)}" onclick="showPage('ceo',null);selectCEO('${p.id}')" title="CEO View — ${escHtml(p.name)}">${escHtml(p.initial)}</button>`).join('');
 }
 function segHtml(active, fn, allLabel, allVal){
   const btn = (val, label) => `<button class="${active===val?'active':''}" onclick="${fn(val)}">${escHtml(label)}</button>`;
-  return btn(allVal, allLabel) + PEOPLE.map(p => btn(p.id, p.name)).join('');
+  return btn(allVal, allLabel) + PEOPLE.map(p => btn(p.id, p.name + (p.active ? '' : ' (inativo)'))).join('');
 }
 function renderPeopleUI(){
   const av = peopleAvatarsHtml();
@@ -2318,9 +2436,9 @@ function renderPeopleUI(){
   set('tkOwnerSeg',   segHtml(tasksFilter.owner, v => `setTaskFilter('owner','${v}',this)`, 'Todos', 'all'));
   set('kbOwnerSeg',   segHtml(kanbanOwnerFilter, v => `setKanbanOwnerFilter('${v}',this)`, 'Todos', 'all'));
   set('reportSeg',    segHtml(currentReportTab, v => `setReportTab('${v}',this)`, 'Geral', 'geral'));
-  set('ceoPeople', PEOPLE.map(p => `<button class="ceo-person${ceoSelected===p.id?' sel':''}" id="ceo-btn-${p.id}" data-id="${p.id}" onclick="selectCEO('${p.id}')">${avatarHtml(p.id)}${escHtml(p.name)} · ${escHtml(p.title)}</button>`).join(''));
-  set('ownerGroup', PEOPLE.map(p => `<button class="owner-btn sel-${avKey(p.id)}${selectedOwner===p.id?' selected':''}" id="ob-${p.id}" onclick="selectOwner('${p.id}',this)">${avatarHtml(p.id)}${escHtml(p.name)}</button>`).join(''));
-  set('meetGroup',  PEOPLE.map(p => `<button class="owner-btn sel-${avKey(p.id)}${meetingParticipants.includes(p.id)?' selected':''}" id="mb-${p.id}" onclick="toggleMeetingPart('${p.id}',this)">${escHtml(p.name)}</button>`).join(''));
+  set('ceoPeople', PEOPLE.map(p => `<button class="ceo-person${ceoSelected===p.id?' sel':''}" id="ceo-btn-${p.id}" data-id="${p.id}" onclick="selectCEO('${p.id}')">${avatarHtml(p.id)}${escHtml(p.name)}${p.active ? '' : ' (inativo)'} · ${escHtml(p.title)}</button>`).join(''));
+  set('ownerGroup', activePeople().map(p => `<button class="owner-btn sel-${avKey(p.id)}${selectedOwner===p.id?' selected':''}" id="ob-${p.id}" onclick="selectOwner('${p.id}',this)">${avatarHtml(p.id)}${escHtml(p.name)}</button>`).join(''));
+  set('meetGroup',  activePeople().map(p => `<button class="owner-btn sel-${avKey(p.id)}${meetingParticipants.includes(p.id)?' selected':''}" id="mb-${p.id}" onclick="toggleMeetingPart('${p.id}',this)">${escHtml(p.name)}</button>`).join(''));
 }
 function applyIdentity(){
   const m = me(); if (!m) return;
@@ -2549,7 +2667,7 @@ function renderDashboard() {
       <div class="up-date"><b>${dd.getDate()} ${MESES_ABR[dd.getMonth()]}</b><span>${DIAS_SHORT[dd.getDay()].toLowerCase()}</span></div>
       <div class="up-dot" style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></div>
       <div style="min-width:0"><div class="up-title" onclick="editTask(${t.id})">${escHtml(t.title)}</div><div class="up-sub">${dashSub(t) || '&nbsp;'}</div></div>
-      <div class="up-time">${t.time||''}</div>
+      <div class="up-time">${escHtml(t.time||'')}</div>
     </div>`;
   }).join('') : '<div class="empty-state"><div class="empty-state-text">Sem próximas tarefas</div></div>';
 
@@ -2583,7 +2701,7 @@ function openMeetingFromCal(ds){ openMeetingModal(ds, null); }
 
 // ─── MEETINGS ────────────────────────────────────────────────────────────────
 function openMeetingModal(ds, meetingId) {
-  meetingParticipants = PEOPLE.filter(p=>p.role==='ceo').map(p=>p.id);
+  meetingParticipants = activePeople().filter(p=>p.role==='ceo').map(p=>p.id);
   editingMeetingId = meetingId || null;
   const existing = meetingId ? meetings.find(m=>m.id===meetingId) : null;
   document.getElementById('meetingModalTitle').textContent = existing ? '✏️ Editar Reunião' : '📅 Nova Reunião';
@@ -2674,7 +2792,7 @@ function weekRangeLabel(base, end){
 
 function buildWeekCard(t){
   return `<div class="wk-card${t.done?' done':''}" data-task-id="${t.id}" onclick="editTask(${t.id})">
-    <div class="wk-card-top"><span class="wk-dot" style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span><span class="wk-time">${t.time||'—'}</span>
+    <div class="wk-card-top"><span class="wk-dot" style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span><span class="wk-time">${escHtml(t.time||'—')}</span>
       <span class="wk-actions"><button onclick="event.stopPropagation();toggleDone(${t.id})" title="${t.done?'Reabrir':'Concluir'}">✓</button><button onclick="event.stopPropagation();deleteTask(${t.id})" title="Excluir">🗑</button></span>
     </div>
     <div class="wk-title">${escHtml(t.title)}</div>
@@ -2822,16 +2940,16 @@ function openMonthPopup(ds, e) {
   if(!pop) return;
   const tasksHtml = dt.map(t=>`
     <div style="padding:8px 10px;background:var(--bg3);border-radius:8px;border-left:3px solid ${{urgent:'var(--urgent)',medium:'var(--medium)',calm:'var(--calm)'}[t.priority]};margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">
-      <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:var(--text);">${t.title}</div>
-        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">${ownerBadge(t.owner)}<span class="badge badge-time">${t.time||'sem hora'}</span></div></div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:var(--text);">${escHtml(t.title)}</div>
+        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">${ownerBadge(t.owner)}<span class="badge badge-time">${escHtml(t.time||'sem hora')}</span></div></div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
         <button onclick="editTask(${t.id})" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);">&#9999;</button>
         <button onclick="deleteTask(${t.id})" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--urgent);">&#128465;</button>
       </div></div>`).join('');
   const meetHtml = dm.map(m=>`
     <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:8px;border-left:3px solid var(--medium);margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">
-      <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--medium);">📅 ${m.title}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px;">${m.time||''} · ${(m.participants||[]).join(' & ')}</div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--medium);">📅 ${escHtml(m.title)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">${escHtml(m.time||'')} · ${escHtml((m.participants||[]).join(' & '))}</div>
         ${m.meetLink?`<a href="${m.meetLink}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:#1a73e8;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;">📹 Entrar no Meet</a>`:''}
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
@@ -3010,7 +3128,7 @@ function buildCeoTaskListSection(myTasks, who){
   return `<h2 class="ceo-all-h">Todas as tarefas</h2>
    <div class="tk-table">
      <div class="tk-row tk-head"><div></div><div>Tarefa</div><div class="c">Responsável</div><div>Prioridade</div><div>Prazo</div><div>Tempo</div><div></div><div></div></div>
-     ${sorted.length ? sorted.map(buildTaskTableRow).join('') : `<div class="empty-state"><div class="empty-state-text">Nenhuma tarefa para ${ownerName(who)}</div></div>`}
+     ${sorted.length ? sorted.map(buildTaskTableRow).join('') : `<div class="empty-state"><div class="empty-state-text">Nenhuma tarefa para ${escHtml(ownerName(who))}</div></div>`}
    </div>`;
 }
 
@@ -3207,14 +3325,14 @@ function renderMonthPanel(){
   const rows = ev.map(e => {
     if(e.kind==='task'){
       const t = e.t;
-      return `<div class="mp-row"><div class="mp-time">${t.time||'—'}</div><div class="mp-line"><span style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span></div>
+      return `<div class="mp-row"><div class="mp-time">${escHtml(t.time||'—')}</div><div class="mp-line"><span style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span></div>
         <div class="mp-body"><div class="mp-title${t.done?' done':''}" onclick="editTask(${t.id})">${escHtml(t.title)}</div>
           <div class="mp-sub">${dashSub(t) || '&nbsp;'}</div>
           <div class="mp-meta">${avatarHtml(t.owner)}<span class="prio-pill ${t.priority}">${PRIO_LABEL[t.priority]||''}</span></div></div></div>`;
     }
     const m = e.m;
     const link = m.meetLink && /^https?:\/\//i.test(m.meetLink) ? `<a class="mp-meet" href="${escHtml(m.meetLink)}" target="_blank" rel="noopener">Entrar no Meet</a>` : '';
-    return `<div class="mp-row"><div class="mp-time">${m.time||'—'}</div><div class="mp-line"><span style="background:var(--accent)"></span></div>
+    return `<div class="mp-row"><div class="mp-time">${escHtml(m.time||'—')}</div><div class="mp-line"><span style="background:var(--accent)"></span></div>
       <div class="mp-body"><div class="mp-title" onclick="openMeetingModal('${ds}',${m.id})">${escHtml(m.title)}</div>
         <div class="mp-sub">Reunião · ${escHtml((m.participants||[]).join(' & '))}</div>${link}</div></div>`;
   }).join('');
@@ -3457,21 +3575,18 @@ function defaultRoutine(){
   ];
 }
 
-function routineKey(){ return meId() === 'Vinicius' ? 'routine_Vinicius' : 'routine'; }
+function routineKey(){ return me()?.routineId || 'routine'; } // RF-10: documento do perfil da sessão
 function routineLsKey(){ return 'fluxo_' + routineKey(); }
 function emptyRoutine(){ return [[],[],[],[],[],[],[]]; }
 function loadRoutine(){
-  const fallback = meId() === 'Vinicius' ? emptyRoutine() : defaultRoutine();
+  const fallback = routineKey() === 'routine' ? defaultRoutine() : emptyRoutine(); // a rotina compartilhada tem padrão; as demais começam vazias
   const saved = loadCachedArray(routineLsKey(), fallback);
   return saved.length === 7 && saved.every(Array.isArray) ? saved : fallback;
 }
 function saveRoutine(){
   if (!window._session) return;
   localStorage.setItem(routineLsKey(),JSON.stringify(routineData));
-  if (window._fbReady) {
-    const { db, doc, setDoc } = window._fb;
-    syncTrack(setDoc(doc(db, 'fluxo', routineKey()), { data: JSON.stringify(routineData) }));
-  }
+  if (window._fbReady) fbWrite(['fluxo', routineKey()], routineData);
 }
 
 let routineData = emptyRoutine();
@@ -3795,7 +3910,7 @@ function setWeekOwnerFilter(val, btn) {
 // ─── EXPORT PDF ───────────────────────────────────────────────────────────────
 function exportPDF() {
   const tab      = currentReportTab;
-  const tabLabel = tab==='geral' ? 'Geral' : ownerName(tab);
+  const tabLabel = tab==='geral' ? 'Geral' : escHtml(ownerName(tab));
   const rd       = reportData(tab);
   const myTasks  = rd.list.slice();
   const done     = myTasks.filter(t=>t.done).length;
@@ -3830,10 +3945,10 @@ function exportPDF() {
 
   const taskRows = myTasks.sort((a,b)=>{const p={urgent:0,medium:1,calm:2};return p[a.priority]-p[b.priority]||(a.date||'').localeCompare(b.date||'');}).map((t,i)=>`
     <tr style="background:${i%2===0?'#f8faff':'#fff'};">
-      <td style="padding:7px 10px;">${t.title}</td>
-      <td style="padding:7px 10px;">${ownerName(t.owner)}</td>
+      <td style="padding:7px 10px;">${escHtml(t.title)}</td>
+      <td style="padding:7px 10px;">${escHtml(ownerName(t.owner))}</td>
       <td style="padding:7px 10px;">${{urgent:'🔴 Urgente',medium:'🟡 Mediano',calm:'🟢 Tranquilo'}[t.priority]}</td>
-      <td style="padding:7px 10px;">${t.category||'Geral'}</td>
+      <td style="padding:7px 10px;">${escHtml(t.category||'Geral')}</td>
       <td style="padding:7px 10px;">${t.date?fmtDisplay(new Date(t.date+'T12:00:00')):'-'}</td>
       <td style="padding:7px 10px;text-align:center;">${t.duration||'—'}</td>
       <td style="padding:7px 10px;text-align:center;font-weight:600;color:${themeClr};">${fmtS(getTaskElapsed(t.id))}</td>
@@ -3929,7 +4044,7 @@ function fillClientSelect(selectedId){
 
 function openModal(owner){
   editingTaskId = null;
-  selectedOwner = (typeof owner === 'string' && person(owner)) ? owner : meId();
+  selectedOwner = (typeof owner === 'string' && activePerson(owner)) ? owner : meId();
   document.querySelectorAll('#ownerGroup .owner-btn').forEach(b => b.classList.toggle('selected', b.id === 'ob-'+selectedOwner));
   fillClientSelect('');
   document.getElementById('modalTitle').textContent = 'Nova tarefa';
@@ -4152,7 +4267,7 @@ function renderPersonMetric(who, containerId, dateStr) {
   const over = workedSecs > goalSecs;
   const k = avKey(who);
   el.innerHTML = `
-    <div class="tm-av ${k}">${ownerInit(who)}</div>
+    <div class="tm-av ${k}">${escHtml(ownerInit(who))}</div>
     <div class="tm-main"><div class="tm-name">${escHtml(ownerName(who))}</div>
       <div class="tm-big">${fmtSecsH(workedSecs)} <span>/ 6h</span></div></div>
     <div class="tm-cols"><div><small>Planejado</small><b>${fmtMinsH(plannedMins)}</b></div><div class="tm-sep"></div><div><small>Trabalhado</small><b>${fmtSecsH(workedSecs)}</b></div></div>
@@ -4166,7 +4281,8 @@ function renderTimeMetric() {
   if(typeof window._metricDate === 'undefined') window._metricDate = fmt(currentDate);
   const md = window._metricDate;
   // O cabeçalho (com o input de data) só é recriado quando o dia muda; os cards atualizam a cada tick do cronômetro.
-  if(bar.dataset.md !== md || !bar.querySelector('#metric-Bruno')){
+  const metricPeople = activePeople();
+  if(bar.dataset.md !== md || bar.querySelectorAll('.tm-card').length !== metricPeople.length){
     const isToday = md === fmt(currentDate);
     bar.dataset.md = md;
     bar.innerHTML = `
@@ -4176,9 +4292,9 @@ function renderTimeMetric() {
         ${!isToday?`<button class="tb-btn" onclick="window._metricDate=fmt(currentDate);renderTimeMetric()">Hoje</button>`:''}
         <input class="date-mini" type="date" value="${md}" onchange="window._metricDate=this.value;renderTimeMetric()">
       </div>
-      <div class="tm-grid">${PEOPLE.map(p => `<div class="tm-cell"><div class="tm-card" id="metric-${p.id}"></div></div>`).join('')}</div>`;
+      <div class="tm-grid">${metricPeople.map(p => `<div class="tm-cell"><div class="tm-card" id="metric-${p.id}"></div></div>`).join('')}</div>`;
   }
-  PEOPLE.forEach(p => renderPersonMetric(p.id, 'metric-'+p.id, md));
+  metricPeople.forEach(p => renderPersonMetric(p.id, 'metric-'+p.id, md));
 }
 
 function shiftMetricDate(delta){
@@ -4274,10 +4390,7 @@ function hsPersist() { if (window._session) localStorage.setItem('fluxo_clients'
 function saveClient(c) {
   if (!window._session) return;
   hsPersist();
-  if (window._fbReady) {
-    const { db, doc, setDoc } = window._fb;
-    syncTrack(setDoc(doc(db, 'fluxo_clients', String(c.id)), { data: JSON.stringify(c) }));
-  }
+  if (window._fbReady) fbWrite(['fluxo_clients', String(c.id)], c);
 }
 function removeClient(id) {
   if (!window._session) return;
@@ -4529,7 +4642,20 @@ function hsParseAction(text) {
   });
   return r;
 }
-function hsWhoKey(who) { const w = (who || '').toLowerCase(); return /bruno/.test(w) ? 'Bruno' : /j[uú]lia/.test(w) ? 'Julia' : /vin[ií]cius/.test(w) ? 'Vinicius' : ''; }
+// Reconhece, no texto do responsável, o nome (ou o primeiro nome, ou o id) de alguém de fluxo_users (RF-15).
+// Sem acento e sem diferença de maiúsculas; vence quem aparece primeiro no texto.
+function hsWhoKey(who) {
+  const norm = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const text = norm(who);
+  let best = '', bestAt = Infinity;
+  activePeople().forEach(p => {
+    [norm(p.name), norm(p.name).split(/\s+/)[0], norm(p.id)].filter(Boolean).forEach(term => {
+      const m = new RegExp('(^|[^a-z0-9])' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9])').exec(text);
+      if (m && m.index + m[1].length < bestAt) { best = p.id; bestAt = m.index + m[1].length; }
+    });
+  });
+  return best;
+}
 function hsPlanTask(c, m, p) { return tasks.find(t => t.clientId === c.id && t.fromMeetingId === m.id && t.title === p.text); }
 
 function hsMeetingsTab(c) {
@@ -4976,7 +5102,7 @@ function startSessionUi() {
   document.getElementById('loginScreen').hidden = true;
   document.getElementById('appShell').hidden = false;
   syncFromFirebase();
-  autosaveTimer = setInterval(() => { if (window._session) saveState(); }, 30000);
+  autosaveTimer = setInterval(autosaveTick, 30000);
 }
 setTimeout(() => { if (!window._fbReady) handleFirebaseFailure(); }, 5000);
 </script>
