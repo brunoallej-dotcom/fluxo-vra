@@ -2060,6 +2060,7 @@ function retryPeople(session, attempt) {
       setPeople(people);
       renderPeopleUI();
       renderCurrentPage();
+      if (SYNC.state === 'warn' && /lista de pessoas/.test(SYNC.msg)) syncOk();
     } catch (e) {
       console.error(e.code);
       retryPeople(session, attempt + 1);
@@ -2316,15 +2317,16 @@ function syncFromFirebase() {
       // O servidor passou a ser o nosso estado: não há mais alteração local a regravar.
       if (!snap.metadata.hasPendingWrites && SYNC.pending === 0) stateSavedRev = stateRev;
       tasks = remote;
-      nextId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 1;
+      nextId = tasks.length ? Math.max(...tasks.map(t=>Number(t.id)||0))+1 : 1;
       tasks.forEach(t => { if(!t.owner) t.owner = 'Bruno'; });
       if(typeof restoreActiveTimers === 'function') restoreActiveTimers();
       localStorage.setItem('fluxo_tasks', JSON.stringify(tasks));
       renderDashboard();
       hsRefreshIfVisible();
     }
-    _tasksLoaded = true;
-    hsMigrateWhenReady();
+    // Só o servidor (ou um documento real) libera a migração legada: um snapshot vazio
+    // vindo do cache faria a migração regravar o cache local velho por cima do banco.
+    if (!snap.metadata.fromCache || remote) { _tasksLoaded = true; hsMigrateWhenReady(); }
   }, onError));
 
   // Reuniões
@@ -2665,7 +2667,7 @@ function renderDashboard() {
       <div class="up-date"><b>${dd.getDate()} ${MESES_ABR[dd.getMonth()]}</b><span>${DIAS_SHORT[dd.getDay()].toLowerCase()}</span></div>
       <div class="up-dot" style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></div>
       <div style="min-width:0"><div class="up-title" onclick="editTask(${t.id})">${escHtml(t.title)}</div><div class="up-sub">${dashSub(t) || '&nbsp;'}</div></div>
-      <div class="up-time">${t.time||''}</div>
+      <div class="up-time">${escHtml(t.time||'')}</div>
     </div>`;
   }).join('') : '<div class="empty-state"><div class="empty-state-text">Sem próximas tarefas</div></div>';
 
@@ -2790,7 +2792,7 @@ function weekRangeLabel(base, end){
 
 function buildWeekCard(t){
   return `<div class="wk-card${t.done?' done':''}" data-task-id="${t.id}" onclick="editTask(${t.id})">
-    <div class="wk-card-top"><span class="wk-dot" style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span><span class="wk-time">${t.time||'—'}</span>
+    <div class="wk-card-top"><span class="wk-dot" style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span><span class="wk-time">${escHtml(t.time||'—')}</span>
       <span class="wk-actions"><button onclick="event.stopPropagation();toggleDone(${t.id})" title="${t.done?'Reabrir':'Concluir'}">✓</button><button onclick="event.stopPropagation();deleteTask(${t.id})" title="Excluir">🗑</button></span>
     </div>
     <div class="wk-title">${escHtml(t.title)}</div>
@@ -2938,16 +2940,16 @@ function openMonthPopup(ds, e) {
   if(!pop) return;
   const tasksHtml = dt.map(t=>`
     <div style="padding:8px 10px;background:var(--bg3);border-radius:8px;border-left:3px solid ${{urgent:'var(--urgent)',medium:'var(--medium)',calm:'var(--calm)'}[t.priority]};margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">
-      <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:var(--text);">${t.title}</div>
-        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">${ownerBadge(t.owner)}<span class="badge badge-time">${t.time||'sem hora'}</span></div></div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:var(--text);">${escHtml(t.title)}</div>
+        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">${ownerBadge(t.owner)}<span class="badge badge-time">${escHtml(t.time||'sem hora')}</span></div></div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
         <button onclick="editTask(${t.id})" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);">&#9999;</button>
         <button onclick="deleteTask(${t.id})" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--urgent);">&#128465;</button>
       </div></div>`).join('');
   const meetHtml = dm.map(m=>`
     <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:8px;border-left:3px solid var(--medium);margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">
-      <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--medium);">📅 ${m.title}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px;">${m.time||''} · ${(m.participants||[]).join(' & ')}</div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--medium);">📅 ${escHtml(m.title)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">${escHtml(m.time||'')} · ${escHtml((m.participants||[]).join(' & '))}</div>
         ${m.meetLink?`<a href="${m.meetLink}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:#1a73e8;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;">📹 Entrar no Meet</a>`:''}
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
@@ -3323,14 +3325,14 @@ function renderMonthPanel(){
   const rows = ev.map(e => {
     if(e.kind==='task'){
       const t = e.t;
-      return `<div class="mp-row"><div class="mp-time">${t.time||'—'}</div><div class="mp-line"><span style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span></div>
+      return `<div class="mp-row"><div class="mp-time">${escHtml(t.time||'—')}</div><div class="mp-line"><span style="background:${PRIO_COLOR[t.priority]||'var(--text3)'}"></span></div>
         <div class="mp-body"><div class="mp-title${t.done?' done':''}" onclick="editTask(${t.id})">${escHtml(t.title)}</div>
           <div class="mp-sub">${dashSub(t) || '&nbsp;'}</div>
           <div class="mp-meta">${avatarHtml(t.owner)}<span class="prio-pill ${t.priority}">${PRIO_LABEL[t.priority]||''}</span></div></div></div>`;
     }
     const m = e.m;
     const link = m.meetLink && /^https?:\/\//i.test(m.meetLink) ? `<a class="mp-meet" href="${escHtml(m.meetLink)}" target="_blank" rel="noopener">Entrar no Meet</a>` : '';
-    return `<div class="mp-row"><div class="mp-time">${m.time||'—'}</div><div class="mp-line"><span style="background:var(--accent)"></span></div>
+    return `<div class="mp-row"><div class="mp-time">${escHtml(m.time||'—')}</div><div class="mp-line"><span style="background:var(--accent)"></span></div>
       <div class="mp-body"><div class="mp-title" onclick="openMeetingModal('${ds}',${m.id})">${escHtml(m.title)}</div>
         <div class="mp-sub">Reunião · ${escHtml((m.participants||[]).join(' & '))}</div>${link}</div></div>`;
   }).join('');
@@ -3943,10 +3945,10 @@ function exportPDF() {
 
   const taskRows = myTasks.sort((a,b)=>{const p={urgent:0,medium:1,calm:2};return p[a.priority]-p[b.priority]||(a.date||'').localeCompare(b.date||'');}).map((t,i)=>`
     <tr style="background:${i%2===0?'#f8faff':'#fff'};">
-      <td style="padding:7px 10px;">${t.title}</td>
+      <td style="padding:7px 10px;">${escHtml(t.title)}</td>
       <td style="padding:7px 10px;">${escHtml(ownerName(t.owner))}</td>
       <td style="padding:7px 10px;">${{urgent:'🔴 Urgente',medium:'🟡 Mediano',calm:'🟢 Tranquilo'}[t.priority]}</td>
-      <td style="padding:7px 10px;">${t.category||'Geral'}</td>
+      <td style="padding:7px 10px;">${escHtml(t.category||'Geral')}</td>
       <td style="padding:7px 10px;">${t.date?fmtDisplay(new Date(t.date+'T12:00:00')):'-'}</td>
       <td style="padding:7px 10px;text-align:center;">${t.duration||'—'}</td>
       <td style="padding:7px 10px;text-align:center;font-weight:600;color:${themeClr};">${fmtS(getTaskElapsed(t.id))}</td>
@@ -4646,7 +4648,7 @@ function hsWhoKey(who) {
   const norm = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const text = norm(who);
   let best = '', bestAt = Infinity;
-  PEOPLE.forEach(p => {
+  activePeople().forEach(p => {
     [norm(p.name), norm(p.name).split(/\s+/)[0], norm(p.id)].filter(Boolean).forEach(term => {
       const m = new RegExp('(^|[^a-z0-9])' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9])').exec(text);
       if (m && m.index + m[1].length < bestAt) { best = p.id; bestAt = m.index + m[1].length; }
