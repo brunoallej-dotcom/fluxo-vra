@@ -1,43 +1,64 @@
 rules_version = '2';
 
-// REGRAS DE CONTENÇÃO (provisórias) — docs/specs/autenticacao-multiusuario.md §5.3
+// REGRAS COMPLETAS (Fase 1) — docs/specs/autenticacao-multiusuario.md §5.2
 //
-// O app atual (sem login) continua funcionando com estas regras; a leitura
-// segue pública. Elas só reduzem o estrago possível até o cutover, quando são
-// substituídas pelas regras completas da spec §5.2 (Onda 2 / Onda 4b).
-// Também aceitam o formato da Fase 1 (updatedBy/updatedAt) e a leitura de
-// fluxo_users por quem está logado, para o passo 5 do cutover funcionar.
+// Só membros ativos (perfil em fluxo_users/{uid} com active == true) leem e
+// gravam; a rotina é restrita ao dono do routineId; toda gravação exige o
+// formato { data, updatedBy, updatedAt } com autoria garantida pela conta.
+//
+// NÃO PUBLICAR antes do cutover (Onda 4b): o app de hoje não faz login nem
+// envia updatedBy/updatedAt, então estas regras derrubam o app para todos.
+// Ordem correta: index.html novo no ar -> só então estas regras.
+// Testes: tests/rules/firestore.rules.test.ts (R01–R13 + casos de borda).
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // updatedBy/updatedAt só têm o tipo conferido aqui; a autoria (updatedBy ==
-    // request.auth.uid) só passa a ser garantida pelas regras completas (§5.2).
+    function signedIn() { return request.auth != null; }
+
+    function profilePath() {
+      return /databases/$(database)/documents/fluxo_users/$(request.auth.uid);
+    }
+
+    // Membro = logado + perfil existente + active == true. Qualquer falha de
+    // avaliação (perfil ausente, campo ausente ou de outro tipo) nega.
+    function isMember() {
+      return signedIn() && exists(profilePath()) && get(profilePath()).data.active == true;
+    }
+
+    // Envelope exigido em toda gravação de dado (contracts/openapi.v1.yaml,
+    // StoredDocument). updatedBy/updatedAt ausentes fazem a avaliação falhar
+    // (nega); updatedAt só passa com serverTimestamp().
     function validPayload() {
       let d = request.resource.data;
       return d.keys().hasOnly(['data', 'updatedBy', 'updatedAt'])
         && d.data is string
         && d.data.size() <= 900000
-        && (!('updatedBy' in d) || d.updatedBy is string)
-        && (!('updatedAt' in d) || d.updatedAt is timestamp);
+        && d.updatedBy == request.auth.uid
+        && d.updatedAt == request.time;
+    }
+
+    // Perfis: leitura (inclusive a lista de pessoas, RF-06) só para membros
+    // ativos; escrita nunca pelo cliente — só pelo console do Firebase.
+    match /fluxo_users/{uid} {
+      allow read: if isMember();
+      allow write: if false;
     }
 
     match /fluxo/{docId} {
-      function knownDoc() {
-        return docId in ['tasks', 'meetings'] || docId.matches('routine(_[A-Za-z0-9_]+)?');
+      // tasks e meetings são de todos; a rotina é só a do próprio routineId
+      // (Bruno e Júlia compartilham "routine"; a equipe usa routine_<personId>).
+      function allowedDoc() {
+        return docId in ['tasks', 'meetings'] || docId == get(profilePath()).data.routineId;
       }
-      allow read: if knownDoc();
-      allow create, update: if knownDoc() && validPayload();
+      allow read: if isMember() && allowedDoc();
+      allow create, update: if isMember() && allowedDoc() && validPayload();
       allow delete: if false;
     }
 
     match /fluxo_clients/{clientId} {
-      allow read, delete: if true;
-      allow create, update: if validPayload();
-    }
-
-    match /fluxo_users/{uid} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read: if isMember();
+      allow create, update: if isMember() && validPayload();
+      allow delete: if isMember(); // Q3: a equipe pode excluir clientes
     }
 
     match /{document=**} {
