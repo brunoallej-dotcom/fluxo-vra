@@ -6,8 +6,9 @@ Leia antes de começar; atualize antes de encerrar.
 ## Current status
 
 - **Fase atual**: Fase 1 — autenticação multiusuário (login e senha por pessoa).
-- **Situação**: S1–S4 concluídos; S2 com pendência (backup); **S5 (hospedagem)
-  em PR**. Regras de contenção em produção desde 2026-11-16, verificadas pelo
+- **Situação**: S1, S3, S4 e S5 concluídos; S2 com pendência (backup).
+  **App servido pelo Firebase Hosting em `https://crm.somosvra.com.br` desde
+  2026-11-16.** Regras de contenção em produção desde 2026-11-16, verificadas pelo
   usuário no app. O app ainda **não tem login** e a **leitura continua pública**.
 - **Restrição do usuário (2026-11-16): nenhum plano pago por enquanto** —
   Firebase Spark, GitHub Free. Consequências:
@@ -16,14 +17,14 @@ Leia antes de começar; atualize antes de encerrar.
     (recomendado ao usuário criptografar com `gpg -c`);
   - proteção da `main`: sem branch protection → `.githooks/pre-push` + regras
     `deny` do `git push` no `.claude/settings.json`.
-- **S5**: PR #7 mergeado (`6088d65`); **Hosting publicado em
-  `https://fluxo-app-59174.web.app` em 2026-11-16** (1 arquivo; conteúdo
-  idêntico ao repositório; cabeçalhos e 404s conferidos). Falta: usuário testar
-  o `web.app` → adicionar `crm.somosvra.com.br` (subdomínio) no Firebase
-  Hosting → no DNS da Hostinger, capturar a tela dos registros `crm` (plano de
-  volta; os IPs resolvidos mudam por causa da CDN `hcdn`), trocar só os A **e
-  AAAA** de `crm` pelos do Firebase → conferir → remover a cópia da Hostinger em
-  até 7 dias sem apagar os registros DNS `crm` (spec de hospedagem §4).
+- **S5**: concluído. PR #7 (`6088d65`); Hosting no `web.app` e, depois da
+  troca de DNS, em `crm.somosvra.com.br` (ALIAS da CDN da Hostinger trocado
+  por `CNAME crm → fluxo-app-59174.web.app`; certificado Google Trust Services
+  emitido em ~16 min, renovação automática). Conferido: conteúdo idêntico,
+  cabeçalhos, 404s; testado pelo usuário no navegador. **Pendente (RH-08):
+  até 2026-11-23, apagar só os arquivos/site `crm` na Hostinger**, sem apagar
+  os registros DNS `crm` e sem desligar a CDN do site (pode reescrever o
+  DNS); conferir o CNAME depois. Plano de volta até lá: spec de hospedagem §4.
 - **Próximo passo**: frentes A/B/C. **Não iniciar a Onda 1 (front) sem o
   usuário autorizar** (pedido explícito em 2026-11-16, reforçado no mesmo dia).
 
@@ -35,7 +36,7 @@ Leia antes de começar; atualize antes de encerrar.
 | S2 | Cópia local dos dados; regras de contenção prontas (publicar só com confirmação); backup/PITR | 🟡 |
 | S3 | Onda 0 | ✅ |
 | S4 | Interfaces congeladas na spec (§9) | ✅ |
-| S5 | Hospedagem: `public/`, Firebase Hosting com cabeçalhos, H01–H05, guarda-corpos da `main` | 🟡 |
+| S5 | Hospedagem: `public/`, Firebase Hosting com cabeçalhos, H01–H06, guarda-corpos da `main`, domínio `crm.somosvra.com.br` | ✅ |
 
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
@@ -118,6 +119,18 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-16 (fim da noite) — domínio próprio no Firebase Hosting
+
+- Console do Firebase: `crm.somosvra.com.br` adicionado (configuração rápida
+  pediu CNAME). No hPanel, o `crm` era um único `ALIAS` para
+  `crm.somosvra.com.br.cdn.hstgr.net` (TTL 300): apagado e substituído por
+  `CNAME crm → fluxo-app-59174.web.app` (TTL 300). Tropeço: o campo *Nome*
+  com `crm.` (ponto final) foi recusado.
+- DNS público já resolvia para o Firebase logo depois; certificado em ~16 min;
+  propagação na CDN do Firebase em poucos minutos (20/20 acessos válidos).
+- No domínio próprio vale o HSTS do `firebase.json` (no `web.app` o Firebase
+  impõe o dele). Usuário testou o app no navegador: ok.
 
 ### 2026-11-16 (noite) — caminho AISAC até a contenção em produção
 
