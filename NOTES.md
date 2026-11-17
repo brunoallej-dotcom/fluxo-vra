@@ -25,8 +25,13 @@ Leia antes de começar; atualize antes de encerrar.
   até 2026-11-23, apagar só os arquivos/site `crm` na Hostinger**, sem apagar
   os registros DNS `crm` e sem desligar a CDN do site (pode reescrever o
   DNS); conferir o CNAME depois. Plano de volta até lá: spec de hospedagem §4.
-- **Próximo passo**: frentes A/B/C. **Não iniciar a Onda 1 (front) sem o
-  usuário autorizar** (pedido explícito em 2026-11-16, reforçado no mesmo dia).
+- **Frentes (desde 2026-11-17)**: A (front, Ondas 1 → 3) no **Codex**, pelo
+  usuário; B e C com subagentes coordenados pelo Claude Code. **Onda 2 pronta**
+  (regras completas + R01–R13 e X01–X17, auditadas) — **não publicar antes do
+  cutover**: o app atual não grava `updatedBy`/`updatedAt` e cairia para
+  todos. Onda 4a em PR (#11).
+- **Próximo passo**: merge da Onda 4a; frente A segue no Codex; depois Onda 3 e
+  cutover (4b), este só com o usuário.
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -42,7 +47,7 @@ Leia antes de começar; atualize antes de encerrar.
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ⬜ |
-| 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ⬜ |
+| 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ✅ (não publicada) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ⬜ |
 | 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ⬜ |
 | 4b | Integração e cutover em produção | 2, 3, 4a | — | ⬜ |
