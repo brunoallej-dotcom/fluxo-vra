@@ -2,9 +2,8 @@
 // Substituem os testes de contenção (C01–C11), que saíram junto com as regras de contenção (Onda 2).
 // Os casos X01… são bordas extras além da tabela da spec; R01–R13 seguem exatamente a tabela.
 import { readFileSync } from 'node:fs';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  assertFails,
   assertSucceeds,
   initializeTestEnvironment,
   type RulesTestEnvironment,
@@ -23,8 +22,30 @@ import {
 } from 'firebase/firestore';
 import { loadUsers, userByKey, type FixtureKey } from '../fixtures/users.ts';
 
-// As recusas esperadas (assertFails) geram logs de PERMISSION_DENIED no SDK; silencia para a saída listar só os casos.
+// As recusas esperadas (assertDenied) geram logs de PERMISSION_DENIED no SDK; silencia para a saída listar só os casos.
 setLogLevel('silent');
+
+// Negação estrita: só conta se a operação for rejeitada com o código permission-denied do Firestore.
+// Qualquer outro erro (formato, rede, argumento inválido) faz o teste falhar em vez de passar como "a regra negou".
+// (O assertFails da biblioteca também aceita por trecho da mensagem; aqui olhamos só o `code`.)
+async function assertDenied(operation: Promise<unknown>): Promise<void> {
+  let passed = false;
+  let error: unknown;
+  try {
+    await operation;
+    passed = true;
+  } catch (e) {
+    error = e;
+  }
+  if (passed) throw new Error('esperava permission-denied, mas a operação foi permitida');
+  const code = String((error as { code?: unknown } | null)?.code ?? '')
+    .toLowerCase()
+    .replace(/_/g, '-')
+    .replace(/^firestore\//, '');
+  if (code !== 'permission-denied') {
+    throw new Error(`esperava permission-denied, mas veio outro erro (code="${code}"): ${String(error)}`);
+  }
+}
 
 let env: RulesTestEnvironment;
 
@@ -80,15 +101,15 @@ const EMPTY_ROUTINE = '[[],[],[],[],[],[],[]]';
 
 describe('regras completas — tabela R01–R13 (spec §7.1)', () => {
   it('R01 anônimo lê fluxo/tasks → nega', async () => {
-    await assertFails(getDoc(doc(anonDb(), 'fluxo/tasks')));
+    await assertDenied(getDoc(doc(anonDb(), 'fluxo/tasks')));
   });
 
   it('R02 logado sem perfil lê fluxo/tasks → nega', async () => {
-    await assertFails(getDoc(doc(dbOf('noprofile'), 'fluxo/tasks')));
+    await assertDenied(getDoc(doc(dbOf('noprofile'), 'fluxo/tasks')));
   });
 
   it('R03 logado com active:false lê fluxo/tasks → nega', async () => {
-    await assertFails(getDoc(doc(dbOf('inactive'), 'fluxo/tasks')));
+    await assertDenied(getDoc(doc(dbOf('inactive'), 'fluxo/tasks')));
   });
 
   it('R04 membro ativo lê fluxo/tasks, fluxo/meetings e fluxo_clients/* → permite', async () => {
@@ -112,26 +133,26 @@ describe('regras completas — tabela R01–R13 (spec §7.1)', () => {
     const db = dbOf('ceo');
     const tasks = doc(db, 'fluxo/tasks');
     // sem updatedBy
-    await assertFails(setDoc(tasks, { data: '[]', updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedAt: serverTimestamp() }));
     // updatedBy de outro uid (inclusive outro membro ativo)
-    await assertFails(setDoc(tasks, { data: '[]', updatedBy: other.uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo/tasks'), { data: '[]', updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedBy: other.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo/tasks'), { data: '[]', updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
     // updatedAt diferente de request.time (relógio do cliente no passado e no futuro)
-    await assertFails(setDoc(tasks, { data: '[]', updatedBy: ceo.uid, updatedAt: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')) }));
-    await assertFails(setDoc(tasks, { data: '[]', updatedBy: ceo.uid, updatedAt: Timestamp.fromDate(new Date('2099-01-01T00:00:00Z')) }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedBy: ceo.uid, updatedAt: Timestamp.fromDate(new Date('2020-01-01T00:00:00Z')) }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedBy: ceo.uid, updatedAt: Timestamp.fromDate(new Date('2099-01-01T00:00:00Z')) }));
     // controle: com serverTimestamp() e o próprio uid, a mesma gravação passa
     await assertSucceeds(setDoc(tasks, validFor(ceo.uid)));
   });
 
   it('R07 grava com chave extra ou data acima de 900 000 caracteres → nega', async () => {
     const tasks = doc(dbOf('ceo'), 'fluxo/tasks');
-    await assertFails(setDoc(tasks, { ...valid('ceo'), extra: true }));
-    await assertFails(setDoc(tasks, valid('ceo', 'x'.repeat(900_001))));
+    await assertDenied(setDoc(tasks, { ...valid('ceo'), extra: true }));
+    await assertDenied(setDoc(tasks, valid('ceo', 'x'.repeat(900_001))));
   });
 
   it('R08 membro apaga fluxo/tasks → nega', async () => {
-    await assertFails(deleteDoc(doc(dbOf('ceo'), 'fluxo/tasks')));
-    await assertFails(deleteDoc(doc(dbOf('staff'), 'fluxo/tasks')));
+    await assertDenied(deleteDoc(doc(dbOf('ceo'), 'fluxo/tasks')));
+    await assertDenied(deleteDoc(doc(dbOf('staff'), 'fluxo/tasks')));
   });
 
   it('R09 membro lê e grava a rotina do próprio routineId → permite', async () => {
@@ -147,42 +168,42 @@ describe('regras completas — tabela R01–R13 (spec §7.1)', () => {
   it('R10 membro lê e grava a rotina de outro routineId → nega', async () => {
     // CEO na rotina da equipe e equipe na rotina dos CEOs, sempre com payload válido
     // (a recusa vem da posse da rotina, não do formato).
-    await assertFails(getDoc(doc(dbOf('ceo'), 'fluxo/routine_Vinicius')));
-    await assertFails(setDoc(doc(dbOf('ceo'), 'fluxo/routine_Vinicius'), valid('ceo', EMPTY_ROUTINE)));
-    await assertFails(getDoc(doc(dbOf('staff'), 'fluxo/routine')));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo/routine'), valid('staff', EMPTY_ROUTINE)));
-    await assertFails(getDoc(doc(dbOf('staff'), 'fluxo/routine_Luiza')));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo/routine_Luiza'), valid('staff', EMPTY_ROUTINE)));
+    await assertDenied(getDoc(doc(dbOf('ceo'), 'fluxo/routine_Vinicius')));
+    await assertDenied(setDoc(doc(dbOf('ceo'), 'fluxo/routine_Vinicius'), valid('ceo', EMPTY_ROUTINE)));
+    await assertDenied(getDoc(doc(dbOf('staff'), 'fluxo/routine')));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo/routine'), valid('staff', EMPTY_ROUTINE)));
+    await assertDenied(getDoc(doc(dbOf('staff'), 'fluxo/routine_Luiza')));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo/routine_Luiza'), valid('staff', EMPTY_ROUTINE)));
   });
 
   it('R11 qualquer cliente grava em fluxo_users/* (inclusive o próprio) → nega', async () => {
     const ceo = userByKey('ceo');
     const staff = userByKey('staff');
     // o próprio perfil: alterar papel (escalada de privilégio), apagar
-    await assertFails(setDoc(doc(dbOf('staff'), `fluxo_users/${staff.uid}`), { ...staff.profile!, role: 'ceo' }));
-    await assertFails(updateDoc(doc(dbOf('staff'), `fluxo_users/${staff.uid}`), { role: 'ceo' }));
-    await assertFails(setDoc(doc(dbOf('ceo'), `fluxo_users/${ceo.uid}`), { ...ceo.profile!, title: 'Outro' }));
-    await assertFails(deleteDoc(doc(dbOf('ceo'), `fluxo_users/${ceo.uid}`)));
+    await assertDenied(setDoc(doc(dbOf('staff'), `fluxo_users/${staff.uid}`), { ...staff.profile!, role: 'ceo' }));
+    await assertDenied(updateDoc(doc(dbOf('staff'), `fluxo_users/${staff.uid}`), { role: 'ceo' }));
+    await assertDenied(setDoc(doc(dbOf('ceo'), `fluxo_users/${ceo.uid}`), { ...ceo.profile!, title: 'Outro' }));
+    await assertDenied(deleteDoc(doc(dbOf('ceo'), `fluxo_users/${ceo.uid}`)));
     // perfil de outra pessoa e criação de perfil novo
-    await assertFails(setDoc(doc(dbOf('ceo'), `fluxo_users/${staff.uid}`), { ...staff.profile!, active: false }));
-    await assertFails(setDoc(doc(dbOf('ceo'), 'fluxo_users/novo'), ceo.profile!));
+    await assertDenied(setDoc(doc(dbOf('ceo'), `fluxo_users/${staff.uid}`), { ...staff.profile!, active: false }));
+    await assertDenied(setDoc(doc(dbOf('ceo'), 'fluxo_users/novo'), ceo.profile!));
     // sem perfil e anônimo não se auto-provisionam
     const noprofile = userByKey('noprofile');
-    await assertFails(setDoc(doc(dbOf('noprofile'), `fluxo_users/${noprofile.uid}`), ceo.profile!));
-    await assertFails(setDoc(doc(anonDb(), 'fluxo_users/novo'), ceo.profile!));
+    await assertDenied(setDoc(doc(dbOf('noprofile'), `fluxo_users/${noprofile.uid}`), ceo.profile!));
+    await assertDenied(setDoc(doc(anonDb(), 'fluxo_users/novo'), ceo.profile!));
     // inativo não se reativa
     const inactive = userByKey('inactive');
-    await assertFails(updateDoc(doc(dbOf('inactive'), `fluxo_users/${inactive.uid}`), { active: true }));
+    await assertDenied(updateDoc(doc(dbOf('inactive'), `fluxo_users/${inactive.uid}`), { active: true }));
   });
 
   it('R12 membro lê e grava coleção não listada → nega', async () => {
     const db = dbOf('ceo');
-    await assertFails(getDoc(doc(db, 'hack/x')));
-    await assertFails(getDocs(collection(db, 'hack')));
-    await assertFails(setDoc(doc(db, 'hack/y'), valid('ceo')));
-    await assertFails(setDoc(doc(db, 'hack/x'), { a: 2 }));
-    await assertFails(deleteDoc(doc(db, 'hack/x')));
-    await assertFails(setDoc(doc(db, 'fluxo_config/geral'), valid('ceo')));
+    await assertDenied(getDoc(doc(db, 'hack/x')));
+    await assertDenied(getDocs(collection(db, 'hack')));
+    await assertDenied(setDoc(doc(db, 'hack/y'), valid('ceo')));
+    await assertDenied(setDoc(doc(db, 'hack/x'), { a: 2 }));
+    await assertDenied(deleteDoc(doc(db, 'hack/x')));
+    await assertDenied(setDoc(doc(db, 'fluxo_config/geral'), valid('ceo')));
   });
 
   it('R13 membro apaga fluxo_clients/{id} → permite (Q3: a equipe pode excluir clientes)', async () => {
@@ -194,88 +215,102 @@ describe('regras completas — tabela R01–R13 (spec §7.1)', () => {
 describe('regras completas — casos extras de borda', () => {
   it('X01 inativo não lê nem grava nada, nem a própria rotina (acesso cortado na hora)', async () => {
     const db = dbOf('inactive');
-    await assertFails(getDoc(doc(db, 'fluxo/meetings')));
-    await assertFails(getDoc(doc(db, 'fluxo_clients/1')));
-    await assertFails(getDocs(collection(db, 'fluxo_clients')));
-    await assertFails(getDoc(doc(db, 'fluxo/routine_Inativo')));
-    await assertFails(setDoc(doc(db, 'fluxo/tasks'), valid('inactive')));
-    await assertFails(setDoc(doc(db, 'fluxo/routine_Inativo'), valid('inactive', EMPTY_ROUTINE)));
-    await assertFails(setDoc(doc(db, 'fluxo_clients/9'), valid('inactive')));
-    await assertFails(deleteDoc(doc(db, 'fluxo_clients/1')));
+    await assertDenied(getDoc(doc(db, 'fluxo/meetings')));
+    await assertDenied(getDoc(doc(db, 'fluxo_clients/1')));
+    await assertDenied(getDocs(collection(db, 'fluxo_clients')));
+    await assertDenied(getDoc(doc(db, 'fluxo/routine_Inativo')));
+    await assertDenied(setDoc(doc(db, 'fluxo/tasks'), valid('inactive')));
+    await assertDenied(setDoc(doc(db, 'fluxo/routine_Inativo'), valid('inactive', EMPTY_ROUTINE)));
+    await assertDenied(setDoc(doc(db, 'fluxo_clients/9'), valid('inactive')));
+    await assertDenied(deleteDoc(doc(db, 'fluxo_clients/1')));
   });
 
   it('X02 logado sem perfil não grava (payload válido), não apaga e não lista fluxo_users', async () => {
     const db = dbOf('noprofile');
-    await assertFails(setDoc(doc(db, 'fluxo/tasks'), valid('noprofile')));
-    await assertFails(setDoc(doc(db, 'fluxo/routine'), valid('noprofile', EMPTY_ROUTINE)));
-    await assertFails(setDoc(doc(db, 'fluxo_clients/9'), valid('noprofile')));
-    await assertFails(deleteDoc(doc(db, 'fluxo_clients/1')));
-    await assertFails(getDocs(collection(db, 'fluxo_users')));
+    await assertDenied(setDoc(doc(db, 'fluxo/tasks'), valid('noprofile')));
+    await assertDenied(setDoc(doc(db, 'fluxo/routine'), valid('noprofile', EMPTY_ROUTINE)));
+    await assertDenied(setDoc(doc(db, 'fluxo_clients/9'), valid('noprofile')));
+    await assertDenied(deleteDoc(doc(db, 'fluxo_clients/1')));
+    await assertDenied(getDocs(collection(db, 'fluxo_users')));
   });
 
-  it('X03 fluxo_users: membro ativo lê e lista (RF-06); inativo e sem perfil não leem nem o próprio perfil', async () => {
+  it('X03 fluxo_users: cada um lê o próprio perfil (RF-04); só membro ativo lê o de outro e lista (RF-06)', async () => {
     const ceo = userByKey('ceo');
-    await assertSucceeds(getDoc(doc(dbOf('staff'), `fluxo_users/${ceo.uid}`)));
-    await assertSucceeds(getDoc(doc(dbOf('ceo'), `fluxo_users/${ceo.uid}`)));
-    await assertSucceeds(getDocs(collection(dbOf('staff'), 'fluxo_users')));
-    // Spec §5.2 ao pé da letra: só membro ativo lê perfis. Quem não é membro recebe permission-denied
-    // (e não um documento "inexistente"/"inativo"), então o front precisa tratar esse erro como RF-04.
     const inactive = userByKey('inactive');
     const noprofile = userByKey('noprofile');
-    await assertFails(getDoc(doc(dbOf('inactive'), `fluxo_users/${inactive.uid}`)));
-    await assertFails(getDoc(doc(dbOf('noprofile'), `fluxo_users/${noprofile.uid}`)));
-    await assertFails(getDocs(collection(dbOf('inactive'), 'fluxo_users')));
-    await assertFails(getDoc(doc(anonDb(), `fluxo_users/${ceo.uid}`)));
-    await assertFails(getDocs(collection(anonDb(), 'fluxo_users')));
+
+    // Inativo lê o próprio perfil e o app vê active:false (RF-04); sem perfil lê o próprio e recebe "não existe".
+    const inactiveSnap = await assertSucceeds(getDoc(doc(dbOf('inactive'), `fluxo_users/${inactive.uid}`)));
+    expect(inactiveSnap.exists()).toBe(true);
+    expect(inactiveSnap.data()?.active).toBe(false);
+    const noprofileSnap = await assertSucceeds(getDoc(doc(dbOf('noprofile'), `fluxo_users/${noprofile.uid}`)));
+    expect(noprofileSnap.exists()).toBe(false);
+
+    // Inativo e sem perfil NÃO leem o perfil de outra pessoa nem listam a coleção.
+    await assertDenied(getDoc(doc(dbOf('inactive'), `fluxo_users/${ceo.uid}`)));
+    await assertDenied(getDoc(doc(dbOf('noprofile'), `fluxo_users/${ceo.uid}`)));
+    await assertDenied(getDocs(collection(dbOf('inactive'), 'fluxo_users')));
+    await assertDenied(getDocs(collection(dbOf('noprofile'), 'fluxo_users')));
+
+    // Membro ativo lê o próprio, o de outro e lista todos.
+    await assertSucceeds(getDoc(doc(dbOf('ceo'), `fluxo_users/${ceo.uid}`)));
+    await assertSucceeds(getDoc(doc(dbOf('staff'), `fluxo_users/${ceo.uid}`)));
+    await assertSucceeds(getDoc(doc(dbOf('ceo'), `fluxo_users/${inactive.uid}`)));
+    const list = await assertSucceeds(getDocs(collection(dbOf('staff'), 'fluxo_users')));
+    expect(list.size).toBeGreaterThanOrEqual(4);
+
+    // Anônimo não lê nada.
+    await assertDenied(getDoc(doc(anonDb(), `fluxo_users/${ceo.uid}`)));
+    await assertDenied(getDocs(collection(anonDb(), 'fluxo_users')));
   });
 
   it('X04 anônimo não lista, não grava (nem com payload bem formado) e não apaga', async () => {
     const db = anonDb();
-    await assertFails(getDocs(collection(db, 'fluxo_clients')));
-    await assertFails(getDoc(doc(db, 'fluxo/meetings')));
-    await assertFails(getDoc(doc(db, 'fluxo/routine')));
-    await assertFails(setDoc(doc(db, 'fluxo/tasks'), { data: '[]' }));
-    await assertFails(setDoc(doc(db, 'fluxo/tasks'), { data: '[]', updatedBy: userByKey('ceo').uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(doc(db, 'fluxo_clients/9'), { data: '{}' }));
-    await assertFails(deleteDoc(doc(db, 'fluxo_clients/1')));
-    await assertFails(deleteDoc(doc(db, 'fluxo/tasks')));
+    await assertDenied(getDocs(collection(db, 'fluxo_clients')));
+    await assertDenied(getDoc(doc(db, 'fluxo/meetings')));
+    await assertDenied(getDoc(doc(db, 'fluxo/routine')));
+    await assertDenied(setDoc(doc(db, 'fluxo/tasks'), { data: '[]' }));
+    await assertDenied(setDoc(doc(db, 'fluxo/tasks'), { data: '[]', updatedBy: userByKey('ceo').uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(doc(db, 'fluxo_clients/9'), { data: '{}' }));
+    await assertDenied(deleteDoc(doc(db, 'fluxo_clients/1')));
+    await assertDenied(deleteDoc(doc(db, 'fluxo/tasks')));
   });
 
   it('X05 membro não apaga fluxo/meetings nem nenhuma rotina', async () => {
-    await assertFails(deleteDoc(doc(dbOf('ceo'), 'fluxo/meetings')));
-    await assertFails(deleteDoc(doc(dbOf('ceo'), 'fluxo/routine')));
-    await assertFails(deleteDoc(doc(dbOf('staff'), 'fluxo/routine_Vinicius')));
+    await assertDenied(deleteDoc(doc(dbOf('ceo'), 'fluxo/meetings')));
+    await assertDenied(deleteDoc(doc(dbOf('ceo'), 'fluxo/routine')));
+    await assertDenied(deleteDoc(doc(dbOf('staff'), 'fluxo/routine_Vinicius')));
   });
 
   it('X06 payload: faltando campo, tipo errado e limite exato de 900 000 caracteres', async () => {
     const ceo = userByKey('ceo');
     const tasks = doc(dbOf('ceo'), 'fluxo/tasks');
     // faltando data ou updatedAt
-    await assertFails(setDoc(tasks, { updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(tasks, { data: '[]', updatedBy: ceo.uid }));
-    await assertFails(setDoc(tasks, { data: '[]' }));
+    await assertDenied(setDoc(tasks, { updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedBy: ceo.uid }));
+    await assertDenied(setDoc(tasks, { data: '[]' }));
     // tipos errados
-    await assertFails(setDoc(tasks, { data: 123, updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(tasks, { data: [], updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(tasks, { data: '[]', updatedBy: 123, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(tasks, { data: '[]', updatedBy: ceo.uid, updatedAt: '2026-11-16' }));
+    await assertDenied(setDoc(tasks, { data: 123, updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(tasks, { data: [], updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedBy: 123, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(tasks, { data: '[]', updatedBy: ceo.uid, updatedAt: '2026-11-16' }));
     // outras chaves extras além da primeira
-    await assertFails(setDoc(tasks, { ...valid('ceo'), updatedByName: 'Bruno' }));
+    await assertDenied(setDoc(tasks, { ...valid('ceo'), updatedByName: 'Bruno' }));
     // limite: 900 000 caracteres passa, 900 001 não (R07)
     await assertSucceeds(setDoc(tasks, valid('ceo', 'x'.repeat(900_000))));
-    await assertFails(setDoc(tasks, valid('ceo', 'x'.repeat(900_001))));
+    await assertDenied(setDoc(tasks, valid('ceo', 'x'.repeat(900_001))));
   });
 
   it('X07 payload inválido também é negado em meetings, rotina e fluxo_clients', async () => {
     const ceo = userByKey('ceo');
     const staff = userByKey('staff');
     await assertSucceeds(setDoc(doc(dbOf('ceo'), 'fluxo/meetings'), valid('ceo', '[]')));
-    await assertFails(setDoc(doc(dbOf('ceo'), 'fluxo/meetings'), { data: '[]' }));
-    await assertFails(setDoc(doc(dbOf('ceo'), 'fluxo/routine'), { data: EMPTY_ROUTINE, updatedBy: staff.uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo/routine_Vinicius'), { ...valid('staff', EMPTY_ROUTINE), extra: 1 }));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo_clients/1'), { data: '{}', updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo_clients/1'), { data: '{}' }));
-    await assertFails(setDoc(doc(dbOf('staff'), 'fluxo_clients/1'), valid('staff', 'x'.repeat(900_001))));
+    await assertDenied(setDoc(doc(dbOf('ceo'), 'fluxo/meetings'), { data: '[]' }));
+    await assertDenied(setDoc(doc(dbOf('ceo'), 'fluxo/routine'), { data: EMPTY_ROUTINE, updatedBy: staff.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo/routine_Vinicius'), { ...valid('staff', EMPTY_ROUTINE), extra: 1 }));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo_clients/1'), { data: '{}', updatedBy: ceo.uid, updatedAt: serverTimestamp() }));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo_clients/1'), { data: '{}' }));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo_clients/1'), valid('staff', 'x'.repeat(900_001))));
   });
 
   it('X08 membro cria e atualiza fluxo_clients/{id} com payload válido', async () => {
@@ -286,13 +321,13 @@ describe('regras completas — casos extras de borda', () => {
 
   it('X09 membro não lê nem grava fluxo/<id fora da lista>, subcoleção nem o routineId de quem não tem conta', async () => {
     const db = dbOf('ceo');
-    await assertFails(getDoc(doc(db, 'fluxo/settings')));
-    await assertFails(setDoc(doc(db, 'fluxo/settings'), valid('ceo', '{}')));
-    await assertFails(setDoc(doc(db, 'fluxo/routine-x'), valid('ceo', EMPTY_ROUTINE)));
-    await assertFails(getDoc(doc(db, 'fluxo/tasks/historico/1')));
-    await assertFails(setDoc(doc(db, 'fluxo/tasks/historico/1'), valid('ceo')));
-    await assertFails(setDoc(doc(db, 'fluxo_clients/1/notas/1'), valid('ceo')));
-    await assertFails(getDoc(doc(db, 'fluxo/routine_Luiza')));
+    await assertDenied(getDoc(doc(db, 'fluxo/settings')));
+    await assertDenied(setDoc(doc(db, 'fluxo/settings'), valid('ceo', '{}')));
+    await assertDenied(setDoc(doc(db, 'fluxo/routine-x'), valid('ceo', EMPTY_ROUTINE)));
+    await assertDenied(getDoc(doc(db, 'fluxo/tasks/historico/1')));
+    await assertDenied(setDoc(doc(db, 'fluxo/tasks/historico/1'), valid('ceo')));
+    await assertDenied(setDoc(doc(db, 'fluxo_clients/1/notas/1'), valid('ceo')));
+    await assertDenied(getDoc(doc(db, 'fluxo/routine_Luiza')));
   });
 
   it('X10 perfil desativado com a sessão aberta: o mesmo contexto passa a ser negado', async () => {
@@ -303,20 +338,20 @@ describe('regras completas — casos extras de borda', () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await updateDoc(doc(ctx.firestore(), `fluxo_users/${staff.uid}`), { active: false });
     });
-    await assertFails(getDoc(doc(db, 'fluxo/tasks')));
-    await assertFails(setDoc(doc(db, 'fluxo/tasks'), valid('staff')));
-    await assertFails(getDoc(doc(db, 'fluxo/routine_Vinicius')));
+    await assertDenied(getDoc(doc(db, 'fluxo/tasks')));
+    await assertDenied(setDoc(doc(db, 'fluxo/tasks'), valid('staff')));
+    await assertDenied(getDoc(doc(db, 'fluxo/routine_Vinicius')));
   });
 
   it('X11 troca de routineId no perfil muda a rotina acessível na hora', async () => {
     const staff = userByKey('staff');
     const db = dbOf('staff');
     await assertSucceeds(getDoc(doc(db, 'fluxo/routine_Vinicius')));
-    await assertFails(getDoc(doc(db, 'fluxo/routine_Luiza')));
+    await assertDenied(getDoc(doc(db, 'fluxo/routine_Luiza')));
     await env.withSecurityRulesDisabled(async (ctx) => {
       await updateDoc(doc(ctx.firestore(), `fluxo_users/${staff.uid}`), { routineId: 'routine_Luiza' });
     });
-    await assertFails(getDoc(doc(db, 'fluxo/routine_Vinicius')));
+    await assertDenied(getDoc(doc(db, 'fluxo/routine_Vinicius')));
     await assertSucceeds(getDoc(doc(db, 'fluxo/routine_Luiza')));
     await assertSucceeds(setDoc(doc(db, 'fluxo/routine_Luiza'), valid('staff', EMPTY_ROUTINE)));
   });
@@ -324,10 +359,76 @@ describe('regras completas — casos extras de borda', () => {
   it('X12 perfil sem active ou com active em texto não é membro (falha fechada)', async () => {
     for (const uid of [BROKEN_NO_ACTIVE, BROKEN_ACTIVE_STRING]) {
       const db = dbOfUid(uid);
-      await assertFails(getDoc(doc(db, 'fluxo/tasks')));
-      await assertFails(getDoc(doc(db, 'fluxo/routine_Vinicius')));
-      await assertFails(setDoc(doc(db, 'fluxo/tasks'), validFor(uid)));
-      await assertFails(getDocs(collection(db, 'fluxo_users')));
+      await assertDenied(getDoc(doc(db, 'fluxo/tasks')));
+      await assertDenied(getDoc(doc(db, 'fluxo/routine_Vinicius')));
+      await assertDenied(setDoc(doc(db, 'fluxo/tasks'), validFor(uid)));
+      await assertDenied(getDocs(collection(db, 'fluxo_users')));
     }
+  });
+
+  it('X13 listar a coleção fluxo inteira → nega (só get por documento permitido)', async () => {
+    await assertDenied(getDocs(collection(dbOf('ceo'), 'fluxo')));
+    await assertDenied(getDocs(collection(dbOf('staff'), 'fluxo')));
+    await assertDenied(getDocs(collection(dbOf('inactive'), 'fluxo')));
+    await assertDenied(getDocs(collection(anonDb(), 'fluxo')));
+  });
+
+  it('X14 dono lê e CRIA a própria rotina que ainda não existe; a de outro continua negada', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await deleteDoc(doc(db, 'fluxo/routine_Vinicius'));
+      await deleteDoc(doc(db, 'fluxo/routine'));
+      await deleteDoc(doc(db, 'fluxo/routine_Luiza'));
+    });
+    // staff: a própria rotina inexistente lê como "não existe" (sem erro) e pode ser criada
+    const staffRoutine = doc(dbOf('staff'), 'fluxo/routine_Vinicius');
+    const staffSnap = await assertSucceeds(getDoc(staffRoutine));
+    expect(staffSnap.exists()).toBe(false);
+    await assertSucceeds(setDoc(staffRoutine, valid('staff', EMPTY_ROUTINE)));
+    // CEO: rotina compartilhada `routine`, também inexistente (criada por Júlia, lida por Bruno)
+    const sharedSnap = await assertSucceeds(getDoc(doc(dbOf('ceo'), 'fluxo/routine')));
+    expect(sharedSnap.exists()).toBe(false);
+    await assertSucceeds(setDoc(doc(dbOf('ceo2'), 'fluxo/routine'), valid('ceo2', EMPTY_ROUTINE)));
+    await assertSucceeds(getDoc(doc(dbOf('ceo'), 'fluxo/routine')));
+    // rotina inexistente de outra pessoa: nem ler nem criar
+    await assertDenied(getDoc(doc(dbOf('staff'), 'fluxo/routine_Luiza')));
+    await assertDenied(setDoc(doc(dbOf('staff'), 'fluxo/routine_Luiza'), valid('staff', EMPTY_ROUTINE)));
+    await assertDenied(setDoc(doc(dbOf('ceo'), 'fluxo/routine_Luiza'), valid('ceo', EMPTY_ROUTINE)));
+  });
+
+  it('X15 documento legado { data }: setDoc merge com payload completo → permite; atualização parcial → nega', async () => {
+    const ceo = userByKey('ceo');
+    const tasks = doc(dbOf('ceo'), 'fluxo/tasks'); // semeado só com { data } (sem updatedBy/updatedAt)
+    // parciais sobre o legado: o documento resultante não tem updatedBy/updatedAt válidos
+    await assertDenied(updateDoc(tasks, { data: '[{"id":2}]' }));
+    await assertDenied(setDoc(tasks, { data: '[{"id":2}]' }, { merge: true }));
+    await assertDenied(updateDoc(tasks, { data: '[{"id":2}]', updatedBy: ceo.uid })); // falta updatedAt
+    // payload completo com merge:true passa a valer sobre o legado
+    await assertSucceeds(setDoc(tasks, valid('ceo', '[{"id":3}]'), { merge: true }));
+    // com o documento já no formato novo, atualização completa passa...
+    await assertSucceeds(updateDoc(tasks, validFor(ceo.uid, '[{"id":4}]')));
+    // ...mas atualização só de data herda o updatedAt antigo (≠ request.time): o app deve sempre gravar o payload inteiro
+    await assertDenied(updateDoc(tasks, { data: '[{"id":5}]' }));
+  });
+
+  it('X16 helper assertDenied é estrito: operação permitida ou erro que não é permission-denied falham o teste', async () => {
+    const db = dbOf('ceo');
+    // operação permitida
+    await expect(assertDenied(getDoc(doc(db, 'fluxo/tasks')))).rejects.toThrow(/foi permitida/);
+    // erros sintéticos de outro tipo (mesmo com a palavra "permission denied" na mensagem)
+    await expect(assertDenied(Promise.reject(new Error('boom')))).rejects.toThrow(/outro erro/);
+    await expect(assertDenied(Promise.reject(Object.assign(new Error('permission denied'), { code: 'invalid-argument' })))).rejects.toThrow(/outro erro/);
+    // as variantes do código de permissão negada são aceitas
+    await assertDenied(Promise.reject(Object.assign(new Error('x'), { code: 'permission-denied' })));
+    await assertDenied(Promise.reject(Object.assign(new Error('x'), { code: 'PERMISSION_DENIED' })));
+    // negação real das regras
+    await assertDenied(getDoc(doc(anonDb(), 'fluxo/tasks')));
+  });
+
+  it('X17 data multibyte: o limite das regras conta caracteres; o erro do backend não é permission-denied', async () => {
+    // 600 000 caracteres "ã" = ~1,2 MB em UTF-8: as regras deixam passar (≤ 900 000 caracteres),
+    // mas o Firestore recusa o documento grande. O assertDenied estrito não pode tratar isso como "regra negou".
+    const tasks = doc(dbOf('ceo'), 'fluxo/tasks');
+    await expect(assertDenied(setDoc(tasks, valid('ceo', 'ã'.repeat(600_000))))).rejects.toThrow(/outro erro/);
   });
 });

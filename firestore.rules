@@ -37,10 +37,14 @@ service cloud.firestore {
         && d.updatedAt == request.time;
     }
 
-    // Perfis: leitura (inclusive a lista de pessoas, RF-06) só para membros
-    // ativos; escrita nunca pelo cliente — só pelo console do Firebase.
+    // Perfis. get: o próprio usuário (logado, mesmo sem perfil ou inativo) lê
+    // só o próprio perfil, para o app decidir RF-04 (não existe / active !=
+    // true) sem receber permission-denied; membros ativos leem qualquer perfil.
+    // list: só membros ativos (lista de pessoas, RF-06). Escrita nunca pelo
+    // cliente — só pelo console do Firebase.
     match /fluxo_users/{uid} {
-      allow read: if isMember();
+      allow get: if signedIn() && (request.auth.uid == uid || isMember());
+      allow list: if isMember();
       allow write: if false;
     }
 
