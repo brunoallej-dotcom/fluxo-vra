@@ -35,8 +35,16 @@ Leia antes de começar; atualize antes de encerrar.
     **não publicar antes do cutover**: o app atual não grava
     `updatedBy`/`updatedAt` e cairia para todos.
   - **Onda 4a** (PR #11): E2E E01–E08 e how-to do cutover.
-- **Próximo passo**: Onda 3 (pessoas dinâmicas, rotina por perfil, `fbWrite`
-  com auditoria — faz o E08 passar); depois cutover (4b), **só com o usuário**.
+  - **Onda 3** (PR #14, empilhado no #13): `PEOPLE` de `fluxo_users`, rotina
+    pelo `routineId`, `fbWrite` com `updatedBy`/`updatedAt`, autosave só com
+    alteração. E2E **E01–E08 verdes** contra as regras completas.
+- **Bloqueio (2026-11-17): CI do GitHub não roda** — "recent account payments
+  have failed or your spending limit needs to be increased". Sem merge de #13
+  e #14 na `main` até o CI voltar (gate AISAC); evidência local equivalente
+  registrada nos PRs.
+- **Próximo passo**: usuário resolver a cobrança do GitHub → CI verde → merge
+  de #13 e depois #14 → cutover (Onda 4b, `docs/how-to/cutover-login.md`),
+  **só com o usuário** (produção).
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -53,7 +61,7 @@ Leia antes de começar; atualize antes de encerrar.
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ✅ |
 | 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ✅ (não publicada) |
-| 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ⬜ |
+| 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ✅ |
 | 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração e cutover em produção | 2, 3, 4a | — | ⬜ |
 
@@ -92,6 +100,10 @@ Detalhes e propostas na spec, §8.
 
 ## Riscos conhecidos
 
+- **CEO View só de interface**: as regras não usam `role`; todo membro ativo
+  lê os mesmos dados (spec §3.4). Perguntado ao usuário se há dado só de CEO.
+- **Última gravação vence em `fluxo/tasks`** (documento único): edição
+  offline de uma pessoa pode sobrescrever a de outra ao reconectar. Fase 2.
 - **Leitura pública em produção até o cutover** (Onda 4b): desde 2026-11-16
   as regras de contenção restringem caminhos, formato, tamanho e exclusões,
   mas qualquer pessoa com o ID do projeto ainda lê tudo e consegue sobrescrever
@@ -135,6 +147,22 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-17 (madrugada) — Claude Code como manager das frentes
+
+- Frente B (Onda 2) e C (Onda 4a) com subagentes Sonnet xhigh em worktrees;
+  auditoria das regras (`firestore-rules-auditor`) levou a leitura do próprio
+  perfil (RF-04 sem ambiguidade) e a testes de negação estritos. PRs #12 e #11
+  mergeados com CI verde.
+- Onda 1 do Codex integrada (PR #13); revisão independente achou 2
+  bloqueantes (mensagem errada na falha do perfil; `permission-denied` em
+  gravação deslogava e apagava o trabalho local) — corrigidos e verificados.
+- Onda 3 com subagente Sonnet xhigh (PR #14); revisão sem bloqueantes;
+  corrigidos XSS armazenado pré-existente (PDF, CEO View) e a migração legada
+  com snapshot só do cache.
+- Portas padrão dos emuladores ocupadas pela sessão do Codex: verificação
+  local em portas alternativas (harness no scratchpad da sessão).
+- CI do GitHub parou por cobrança da conta (ver status).
 
 ### 2026-11-17 — Onda 1: front de login, verificado localmente
 
