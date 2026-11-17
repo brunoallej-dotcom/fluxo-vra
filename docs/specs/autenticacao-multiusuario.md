@@ -133,6 +133,10 @@ function fbWrite(path, value) {
 }
 ```
 
+Sempre o documento inteiro (`setDoc` com os três campos, com ou sem
+`{merge: true}`): um `updateDoc` só de `data` herda o `updatedBy`/`updatedAt`
+antigos e as regras negam (teste X15).
+
 ### 3.4 Threat model rápido (STRIDE)
 
 | Ameaça | Hoje | Mitigação nesta fase |
@@ -148,13 +152,23 @@ function fbWrite(path, value) {
 `fluxo/tasks` ou `fluxo/meetings` inteiros (o documento é único). Mitigado por
 backups e `updatedBy`; resolvido na Fase 2 (um documento por item).
 
+**Risco residual aceito nesta fase:** a CEO View é só de interface. As regras
+não usam `role`: todo membro ativo lê os mesmos documentos que a CEO View
+agrega (hoje tarefas, reuniões e clientes já são compartilhados por todos).
+Um dado exclusivo de CEO, se surgir, precisa de documento próprio com regra
+`get(profilePath()).data.role == 'ceo'`.
+
+**Limite de tamanho:** `data.size() <= 900000` conta caracteres, não bytes. Com
+acentos, o documento pode passar de 1 MiB antes desse limite; aí o Firestore
+recusa com um erro que não é `permission-denied` (tratado pelo `syncTrack`).
+
 ## 4. Modelo de dados
 
 Detalhe completo dos campos em [`contracts/openapi.v1.yaml`](../../contracts/openapi.v1.yaml).
 
 | Caminho | Conteúdo | Quem lê | Quem grava |
 |---|---|---|---|
-| `fluxo_users/{uid}` (**novo**) | `UserProfile` | membros ativos | só o console (cliente: nunca) |
+| `fluxo_users/{uid}` (**novo**) | `UserProfile` | membros ativos (todos os perfis); qualquer usuário logado lê **só o próprio** (para o RF-04) | só o console (cliente: nunca) |
 | `fluxo/tasks` | `StoredDocument` com `Task[]` em `data` | membros ativos | membros ativos (sem `delete`) |
 | `fluxo/meetings` | `StoredDocument` com `Meeting[]` | membros ativos | membros ativos (sem `delete`) |
 | `fluxo/{routineId}` | `StoredDocument` com `Routine` | dono do `routineId` | dono do `routineId` (sem `delete`) |
@@ -208,7 +222,10 @@ service cloud.firestore {
     }
 
     match /fluxo_users/{uid} {
-      allow read: if isMember();
+      // O próprio usuário lê o próprio perfil (o app decide o RF-04 por
+      // "não existe / active != true"); membros ativos leem e listam todos (RF-06).
+      allow get: if signedIn() && (request.auth.uid == uid || isMember());
+      allow list: if isMember();
       allow write: if false;            // só pelo console
     }
 
@@ -279,6 +296,7 @@ junto com as regras de contenção:
 | Muitas tentativas (`auth/too-many-requests`) | "Muitas tentativas. Aguarde alguns minutos ou redefina a senha." |
 | Conta desativada no Auth (`auth/user-disabled`) | Mesma mensagem genérica do RF-02. |
 | Login ok, perfil ausente ou inativo | RF-04. |
+| Login ok, mas a leitura do próprio perfil falha (`permission-denied`, rede) | `signOut` + "Não foi possível verificar seu acesso. Tente de novo." Nunca a mensagem do RF-04: `permission-denied` aqui indica regra errada ou publicada fora de ordem, não falta de acesso. |
 | Perfil desativado com a sessão aberta | O próximo snapshot ou gravação recebe `permission-denied` → `signOut` + "Seu acesso foi encerrado." |
 | Redefinição para e-mail inexistente | Mesma mensagem neutra do RF-03. |
 | "Sair" com gravações pendentes | Confirmação: "Há alterações ainda não sincronizadas. Sair mesmo assim?" |

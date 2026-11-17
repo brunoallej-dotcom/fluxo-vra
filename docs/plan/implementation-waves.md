@@ -22,9 +22,9 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`public/index.html`) | 0, S4 | 2, 4a | ✅ |
-| 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ⬜ |
+| 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ✅ (não publicada — só no cutover) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`public/index.html`) | 1 | 2, 4a | ⬜ |
-| 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ⬜ |
+| 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração (E2E verde com 1+2+3+4a) e cutover em produção | 2, 3, 4a | — | ⬜ |
 
 ### Frentes paralelas
@@ -42,7 +42,13 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   `tests/fixtures/`. Se uma frente precisar mudar algum deles, para e pede à
   sessão principal.
 - Ordem de merge, um PR por vez: B quando estiver pronta (não muda produção),
-  A onda por onda, C por último (os testes só passam com A e B).
+  depois C, depois A onda por onda. **Ajuste de 2026-11-17:** C entra antes de
+  A (e não por último) para a frente A usar os E2E como alvo (test-first); o
+  `test:e2e` não roda no CI até o cutover, então os testes vermelhos não
+  bloqueiam a `main`.
+- **Executores desde 2026-11-17:** frente A no Codex (pelo usuário, na pasta
+  principal, branch `feat/onda-1-login`); frentes B e C com subagentes em
+  worktrees, coordenados pela sessão principal do Claude Code.
 - Nada que toque produção (MCP do Firebase, `firebase deploy`) roda em subagente.
 
 ## Onda 0 — Fundação
@@ -78,7 +84,7 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   registrada em commit local, sem publicação. Check estático e 12 seletores da spec verdes;
   roteiro temporário Chromium + emuladores `demo-fluxo` com 11/11 grupos
   aprovados, incluindo recarga, logout entre abas e mobile. Detalhes no diário
-  do `NOTES.md`. Ondas 2, 3, 4a e 4b não iniciadas nesta entrega.
+  do `NOTES.md`.
 - **Objetivo**: ninguém vê nem lê dados sem estar logado com perfil ativo.
 - **Escopo (slices/arquivos)**: `public/index.html` — módulo Firebase (importa
   `firebase-auth.js` 10.12.0; modo emulador da spec §9.2), tela de login

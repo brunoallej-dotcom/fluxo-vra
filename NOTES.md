@@ -25,14 +25,18 @@ Leia antes de começar; atualize antes de encerrar.
   até 2026-11-23, apagar só os arquivos/site `crm` na Hostinger**, sem apagar
   os registros DNS `crm` e sem desligar a CDN do site (pode reescrever o
   DNS); conferir o CNAME depois. Plano de volta até lá: spec de hospedagem §4.
-- **Trabalho autorizado (2026-11-17)**: implementar **apenas a Onda 1 (front)**,
-  na branch `feat/onda-1-login`, com subagentes Sol em xhigh e sessão principal
-  como gerente. **Implementada, verificada e registrada em commit local**.
-  `npm run check` verde; 12 seletores da spec presentes; roteiro temporário
-  Chromium + emuladores `demo-fluxo` com 11/11 grupos aprovados, incluindo logout
-  entre abas e mobile. Revisão independente sem achados bloqueantes.
-  **Próximo passo**: revisão para PR da Onda 1. Ondas 2, 3, 4a e cutover
-  continuam pendentes, fora desta autorização; nenhum deploy realizado.
+- **Frentes (desde 2026-11-17)**: A (front, Ondas 1 → 3) no **Codex**, pelo
+  usuário, até a Onda 1; a partir daí o Claude Code assume como manager (pedido
+  do usuário, com autonomia para commit/PR/merge, sem produção). B e C com
+  subagentes coordenados pelo Claude Code.
+  - **Onda 1** (Codex, commit `8ed8183`): login, gate de sessão, "Sair",
+    "Esqueci minha senha", autosave só com sessão. Testada pelo usuário.
+  - **Onda 2** (PR #12): regras completas + R01–R13 e X01–X17, auditadas —
+    **não publicar antes do cutover**: o app atual não grava
+    `updatedBy`/`updatedAt` e cairia para todos.
+  - **Onda 4a** (PR #11): E2E E01–E08 e how-to do cutover.
+- **Próximo passo**: Onda 3 (pessoas dinâmicas, rotina por perfil, `fbWrite`
+  com auditoria — faz o E08 passar); depois cutover (4b), **só com o usuário**.
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -48,9 +52,9 @@ Leia antes de começar; atualize antes de encerrar.
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ✅ |
-| 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ⬜ |
+| 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ✅ (não publicada) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ⬜ |
-| 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ⬜ |
+| 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração e cutover em produção | 2, 3, 4a | — | ⬜ |
 
 Frentes paralelas depois de S1–S5: **A** = Ondas 1 → 3 (`public/index.html`,
