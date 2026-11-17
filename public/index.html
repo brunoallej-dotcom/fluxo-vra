@@ -2004,8 +2004,28 @@ async function handleAuthStateChanged(user) {
   } catch (e) {
     if (version !== sessionVersion) return;
     console.error(e.code);
-    await endAccess(e.code === 'permission-denied' ? 'Seu acesso ainda não foi liberado. Fale com um CEO.' : 'Sem conexão com a internet. Tente de novo.');
+    // Spec §6: falha na leitura do próprio perfil nunca usa a mensagem do RF-04
+    // (permission-denied aqui indica regra errada ou publicada fora de ordem).
+    await endAccess(e.code === 'unavailable' ? 'Sem conexão com a internet. Tente de novo.' : 'Não foi possível verificar seu acesso. Tente de novo.');
   }
+}
+// Um permission-denied numa gravação/leitura com sessão aberta só encerra o acesso
+// se o perfil realmente foi removido ou desativado (spec §6); senão é um erro comum
+// (ex.: payload acima do limite) e o trabalho local é preservado.
+function verifyAccessAfterDenied(session, onStillMember) {
+  const { db, doc, getDoc } = window._fb;
+  getDoc(doc(db, 'fluxo_users', session.uid))
+    .then(snap => {
+      if (session !== window._session) return;
+      if (!validProfile(snap.exists() ? snap.data() : null)) { endAccess('Seu acesso foi encerrado.'); return; }
+      onStillMember();
+    })
+    .catch(err => {
+      if (session !== window._session) return;
+      console.error(err.code);
+      if (err.code === 'permission-denied') { endAccess('Seu acesso foi encerrado.'); return; }
+      onStillMember();
+    });
 }
 function handleFirebaseFailure(e) {
   console.error(e?.code);
@@ -2054,6 +2074,7 @@ async function forgotPassword() {
 async function logout() {
   if (!window._session || (SYNC.pending > 0 && !confirm('Há alterações ainda não sincronizadas. Sair mesmo assim?'))) return;
   await endAccess('');
+  document.getElementById('loginEmail').value = ''; // computador compartilhado: não deixa o e-mail anterior
 }
 
 // ─── PESSOAS ─────────────────────────────────────────────────────────────────
@@ -2116,13 +2137,18 @@ function syncTrack(promise) {
   if (SYNC.state !== 'err') syncSet('saving', 'Salvando no banco de dados…');
   const slow = sessionTimeout(() => syncSet('warn', 'O servidor não confirmou a gravação em 10s. Pode estar sem internet; o que você salvou ainda não chegou ao time.'), 10000);
   return promise.then(() => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = false; syncOk(); })
-    .catch(e => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = true; console.error(e.code); if (e.code === 'permission-denied') { endAccess('Seu acesso foi encerrado.'); return; } syncSet('err', 'Não foi possível salvar no banco (' + (e.code || 'erro') + '). O que você salvou fica só neste navegador e o time não vê.'); });
+    .catch(e => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = true; console.error(e.code);
+      const showWriteError = () => syncSet('err', 'Não foi possível salvar no banco (' + (e.code || 'erro') + '). O que você salvou fica só neste navegador e o time não vê.');
+      if (e.code === 'permission-denied') { verifyAccessAfterDenied(session, showWriteError); return; }
+      showWriteError(); });
 }
 function syncListenError(e) {
-  if (!window._session) return;
+  const session = window._session;
+  if (!session) return;
   console.error(e.code);
-  if (e.code === 'permission-denied') { endAccess('Seu acesso foi encerrado.'); return; }
-  syncSet('err', 'Não foi possível ler do banco (' + (e.code || 'erro') + '). Você pode estar vendo dados desatualizados.');
+  const showReadError = () => syncSet('err', 'Não foi possível ler do banco (' + (e.code || 'erro') + '). Você pode estar vendo dados desatualizados.');
+  if (e.code === 'permission-denied') { verifyAccessAfterDenied(session, showReadError); return; }
+  showReadError();
 }
 function syncSnapshotOk(snap) { if (!snap.metadata.fromCache && !SYNC.writeFailed) syncOk(); }
 window.addEventListener('offline', () => { if (window._session) syncSet('err', 'Sem conexão com a internet. O que você salvar fica só neste navegador.'); });
@@ -2617,8 +2643,8 @@ function showMeetingAlert(m, minLeft) {
   const el=document.createElement('div'); el.className='meeting-alert';
   el.innerHTML=`<button class="meeting-alert-close" onclick="this.parentElement.remove()">✕</button>
     <div class="meeting-alert-title">⏰ Reunião em ${minLeft<=0?'agora':'~'+minLeft+' min'}</div>
-    <div class="meeting-alert-text"><strong>${m.title}</strong><br>${m.time} · ${(m.participants||[]).join(' & ')}</div>
-    ${m.meetLink?`<a href="${m.meetLink}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 14px;background:#1a73e8;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">📹 Entrar no Meet</a>`:''}`;
+    <div class="meeting-alert-text"><strong>${escHtml(m.title)}</strong><br>${escHtml(m.time)} · ${escHtml((m.participants||[]).join(' & '))}</div>
+    ${hsSafeUrl(m.meetLink)?`<a href="${escHtml(hsSafeUrl(m.meetLink))}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 14px;background:#1a73e8;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">📹 Entrar no Meet</a>`:''}`;
   document.body.appendChild(el);
   sessionTimeout(()=>{ if(el.parentElement) el.remove(); }, 30000);
 }
@@ -4927,8 +4953,16 @@ document.getElementById('loginForm').addEventListener('submit', login);
 document.getElementById('loginForgot').addEventListener('click', forgotPassword);
 document.addEventListener('fluxo-session-start', () => {
   if (!window._session) return;
+  try { startSessionUi(); }
+  catch (e) {
+    // Sem isto, um cache local corrompido deixaria a pessoa presa no login com o formulário travado.
+    console.error(e?.code || e?.name);
+    endAccess('Não foi possível carregar o app. Tente de novo.');
+  }
+});
+function startSessionUi() {
   tasks = loadState();
-  nextId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 1;
+  nextId = tasks.length ? Math.max(...tasks.map(t=>Number(t.id)||0))+1 : 1;
   tasks.forEach(t => { if (!t.owner) t.owner = 'Bruno'; });
   meetings = loadCachedArray('fluxo_meetings', []);
   nextMid = meetings.length ? Math.max(...meetings.map(m=>m.id||0))+1 : 1;
@@ -4943,7 +4977,7 @@ document.addEventListener('fluxo-session-start', () => {
   document.getElementById('appShell').hidden = false;
   syncFromFirebase();
   autosaveTimer = setInterval(() => { if (window._session) saveState(); }, 30000);
-});
+}
 setTimeout(() => { if (!window._fbReady) handleFirebaseFailure(); }, 5000);
 </script>
 </body>
