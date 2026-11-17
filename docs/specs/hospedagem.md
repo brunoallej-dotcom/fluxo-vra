@@ -1,6 +1,6 @@
 # Spec — Hospedagem no Firebase Hosting (S5)
 
-- **Status**: proposta (implementação no PR do S5)
+- **Status**: implementada — no ar em `crm.somosvra.com.br` desde 2026-11-16; falta só o RH-08 (até 2026-11-23)
 - **Data**: 2026-11-16
 - **Decisão arquitetural**: [ADR-0002](../adr/0002-firebase-hosting.md)
 - **Relacionada**: [autenticação multiusuário](autenticacao-multiusuario.md) (Q2 resolvida por esta spec)
@@ -46,8 +46,10 @@ agendado), mudanças no `index.html`.
   decisão para todo o `somosvra.com.br`.
 - **Observado em produção (2026-11-16):** o Firebase Hosting impõe o próprio
   HSTS (`max-age=31556926; includeSubDomains; preload`) e ignora o valor do
-  `firebase.json` no `web.app`. Conferir também no domínio próprio depois da
-  troca de DNS. O teste H02 valida a configuração no emulador.
+  `firebase.json` no `web.app`. **No domínio próprio** (conferido em
+  2026-11-16, depois da troca de DNS) vale o valor do `firebase.json`
+  (`max-age=63072000; includeSubDomains`). O teste H02 valida a configuração
+  no emulador.
 - Sem `Cross-Origin-Opener-Policy`: o relatório abre uma janela com
   `window.open` + `document.write`; não vale o risco nesta etapa.
 
@@ -74,27 +76,42 @@ Safari e celular, não só no console de um navegador.
 2. `firebase deploy --only hosting --project prod` → app em `https://fluxo-app-59174.web.app`.
 3. Conferir cabeçalhos (`curl -I`) e o app no `web.app` (o time ainda usa a Hostinger).
 4. **Usuário**, no console do Firebase → Hosting → *Adicionar domínio personalizado* →
-   `crm.somosvra.com.br`: o console mostra um registro TXT de verificação e os
-   registros A do Firebase.
+   `crm.somosvra.com.br`. Na *configuração rápida* o console pediu **um CNAME**
+   (`crm` → `fluxo-app-59174.web.app`) e a remoção dos A/AAAA que o `crm`
+   resolvia (eram os IPs da CDN da Hostinger). O erro "ACME 404" mostrado
+   antes da troca de DNS é esperado.
 5. **Usuário**, no hPanel da Hostinger → Domínios → `somosvra.com.br` →
-   Registros DNS. `crm` é um **subdomínio**: o campo *Nome* recebe só a parte
-   antes do domínio (`crm`, ou `_acme-challenge.crm` se o Firebase pedir).
+   Registros DNS. `crm` é um **subdomínio**: o campo *Nome* recebe só `crm`,
+   **sem ponto no final** (`crm.` vira `crm..somosvra.com.br` e o painel recusa).
    - **Antes de mudar, capturar a tela dos registros com Nome `crm`** (plano de
-     volta). Não anotar IPs resolvidos: o `crm` passa pela CDN da Hostinger
+     volta). Não anotar IPs resolvidos: o `crm` passava pela CDN da Hostinger
      (`hcdn`), que devolve IPs diferentes a cada consulta.
-   - Criar o TXT; **apagar só os A e AAAA com Nome `crm`**; criar os A do
-     Firebase. Sem apagar os AAAA, quem usa IPv6 continua indo para a Hostinger.
-   - Não tocar em `@`, `www` nem `NS`. Se a CDN da Hostinger estiver ativa para
-     o site `crm`, desativá-la (senão ela continua respondendo no lugar do Firebase).
+   - **Encontrado em 2026-11-16:** uma única linha `ALIAS crm →
+     crm.somosvra.com.br.cdn.hstgr.net` (TTL 300) — o ALIAS é que gerava os
+     A e AAAA. Apagar essa linha **antes** de criar o CNAME (CNAME não convive
+     com outro registro de mesmo nome) e criar `CNAME crm →
+     fluxo-app-59174.web.app`, TTL 300.
+   - Não tocar em `@`, `www`, nos demais subdomínios nem em `NS`. A CDN da
+     Hostinger não foi desligada: sem o ALIAS, ela deixa de receber o tráfego
+     do `crm`; desligá-la depois pode reescrever os registros `crm`.
    - Conferido em 2026-11-16: sem registros CAA (nada bloqueia o certificado) e
      sem MX no domínio raiz.
+   - Clicar em *Verificar* no console; o status passa a "Criando certificado".
 6. Aguardar o certificado (até 24 h) e conferir `curl -I https://crm.somosvra.com.br`.
+   **Em 2026-11-16:** emitido em ~16 min (Google Trust Services, válido até
+   2027-02-15, renovação automática); nos primeiros minutos parte da CDN ainda
+   servia o certificado antigo, depois 20/20 acessos válidos. Conteúdo
+   idêntico ao `public/index.html`, cabeçalhos do RH-02/RH-03/RH-04 presentes,
+   arquivos fora de `public/` com 404; app testado pelo usuário no navegador.
+   Enquanto o certificado não sai, o domínio mostra erro de segurança: o time
+   usa o `web.app` (mesmos dados; a identidade escolhida no navegador é por
+   endereço e precisa ser escolhida de novo).
 7. Manter a cópia da Hostinger por até 7 dias como plano de volta; depois,
    apagar **só os arquivos/site** do subdomínio e conferir que os registros DNS
    `crm` continuam apontando para o Firebase (excluir o subdomínio no painel de
    hospedagem pode apagar os registros DNS junto).
 
-**Plano de volta:** recriar os registros `crm` conforme a captura de tela do passo 5.
+**Plano de volta** (enquanto a cópia da Hostinger existir): apagar o CNAME `crm` e recriar `ALIAS crm → crm.somosvra.com.br.cdn.hstgr.net`, TTL 300, conforme a captura de tela do passo 5.
 
 ## 5. Testes
 

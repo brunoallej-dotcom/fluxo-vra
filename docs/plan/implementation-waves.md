@@ -14,7 +14,7 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 | S2 | Urgente: cópia local dos dados de produção (só leitura); regras de contenção prontas e testadas, publicadas só com confirmação; backup/PITR decidido pelo dono do projeto | 🟡 |
 | S3 | Onda 0 (abaixo) | ✅ |
 | S4 | Interfaces congeladas na spec (§9): seletores da tela de login, modo emulador, fixture de usuários de teste | ✅ |
-| S5 | Hospedagem: `public/index.html` em `public/`, Firebase Hosting com cabeçalhos de segurança, testes H01–H05, guarda-corpos da `main` ([spec](../specs/hospedagem.md)) — **antes** da frente A, porque muda o caminho do arquivo | 🟡 |
+| S5 | Hospedagem: `public/index.html` em `public/`, Firebase Hosting com cabeçalhos de segurança, testes H01–H05, guarda-corpos da `main` ([spec](../specs/hospedagem.md)) — **antes** da frente A, porque muda o caminho do arquivo. No ar em `crm.somosvra.com.br` desde 2026-11-16; resta só apagar a cópia da Hostinger até 2026-11-23 (RH-08) | ✅ |
 
 ## Ondas
 
