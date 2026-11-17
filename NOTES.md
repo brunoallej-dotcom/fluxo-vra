@@ -38,13 +38,13 @@ Leia antes de começar; atualize antes de encerrar.
   - **Onda 3** (PR #14, empilhado no #13): `PEOPLE` de `fluxo_users`, rotina
     pelo `routineId`, `fbWrite` com `updatedBy`/`updatedAt`, autosave só com
     alteração. E2E **E01–E08 verdes** contra as regras completas.
-- **Bloqueio (2026-11-17): CI do GitHub não roda** — "recent account payments
-  have failed or your spending limit needs to be increased". Sem merge de #13
-  e #14 na `main` até o CI voltar (gate AISAC); evidência local equivalente
-  registrada nos PRs.
-- **Próximo passo**: usuário resolver a cobrança do GitHub → CI verde → merge
-  de #13 e depois #14 → cutover (Onda 4b, `docs/how-to/cutover-login.md`),
-  **só com o usuário** (produção).
+- **CI (2026-11-17)**: parou por cobrança da conta com o repositório privado;
+  o usuário tornou o repositório **público** (Actions gratuito). Histórico
+  conferido antes dos merges: nunca entrou `backups/`, arquivo de ambiente
+  real nem chave. Onda 1 mergeada (#13); gate de SCA com exceção datada (#15).
+- **Próximo passo**: merge da Onda 3 → cutover (Onda 4b,
+  `docs/how-to/cutover-login.md`), **só com o usuário** (produção). Com o
+  repositório público, o GitHub Free permite proteger a `main` (ruleset).
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -162,7 +162,7 @@ Detalhes e propostas na spec, §8.
   com snapshot só do cache.
 - Portas padrão dos emuladores ocupadas pela sessão do Codex: verificação
   local em portas alternativas (harness no scratchpad da sessão).
-- CI do GitHub parou por cobrança da conta (ver status).
+- CI do GitHub parou por cobrança da conta; resolvido com o repositório público.
 
 ### 2026-11-17 — Onda 1: front de login, verificado localmente
 
