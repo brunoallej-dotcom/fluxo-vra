@@ -49,7 +49,8 @@ jobs:
           key: firebase-emulators-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - name: SCA (falha em vulnerabilidade high ou critical)
-        run: npm audit --audit-level=high
+        # Exceções com motivo e validade em scripts/audit-gate.mjs; vencida ou nova = falha.
+        run: node scripts/audit-gate.mjs
       - run: npm run check
       - run: npm run test:hooks
       - run: npm run test:rules

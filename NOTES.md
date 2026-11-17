@@ -106,6 +106,12 @@ Detalhes e propostas na spec, §8.
 - **Autoria só confiável depois da Onda 2**: com as regras de contenção,
   `updatedBy`/`updatedAt` têm o tipo conferido, mas qualquer um pode
   preenchê-los; a garantia (`updatedBy == request.auth.uid`) vem das regras completas.
+- **Exceção de SCA até 2026-12-31** (`scripts/audit-gate.mjs`): alerta high
+  GHSA-fc5q-39xc-vjpf (`picomatch` <= 4.0.7, ReDoS) só no tooling de testes
+  (vitest/vite, node-gyp/re2 do `firebase-tools`); sem versão corrigida em
+  2026-11-17 e o "fix" do npm rebaixaria o vitest de 5 para 3. O CI segue
+  falhando em qualquer outro high/critical; quando sair o `picomatch` corrigido
+  (Dependabot), remover a exceção.
 - **Dependências de desenvolvimento**: 14 vulnerabilidades moderadas
   transitivas do `firebase-tools` (16/11/2026), aceitas por serem só tooling
   local/CI sem entrada não confiável; o CI falha em high/critical e o Dependabot
