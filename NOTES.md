@@ -9,7 +9,7 @@ Leia antes de começar; atualize antes de encerrar.
 - **Situação**: S1, S3, S4 e S5 concluídos; S2 com pendência (backup).
   **App servido pelo Firebase Hosting em `https://crm.somosvra.com.br` desde
   2026-11-16.** Regras de contenção em produção desde 2026-11-16, verificadas pelo
-  usuário no app. O app ainda **não tem login** e a **leitura continua pública**.
+  usuário no app. O app em produção ainda **não tem login** e a **leitura continua pública**.
 - **Restrição do usuário (2026-11-16): nenhum plano pago por enquanto** —
   Firebase Spark, GitHub Free. Consequências:
   - backup: sem PITR/backup gerenciado → exportação diária criptografada via
@@ -25,8 +25,14 @@ Leia antes de começar; atualize antes de encerrar.
   até 2026-11-23, apagar só os arquivos/site `crm` na Hostinger**, sem apagar
   os registros DNS `crm` e sem desligar a CDN do site (pode reescrever o
   DNS); conferir o CNAME depois. Plano de volta até lá: spec de hospedagem §4.
-- **Próximo passo**: frentes A/B/C. **Não iniciar a Onda 1 (front) sem o
-  usuário autorizar** (pedido explícito em 2026-11-16, reforçado no mesmo dia).
+- **Trabalho autorizado (2026-11-17)**: implementar **apenas a Onda 1 (front)**,
+  na branch `feat/onda-1-login`, com subagentes Sol em xhigh e sessão principal
+  como gerente. **Implementada, verificada e registrada em commit local**.
+  `npm run check` verde; 12 seletores da spec presentes; roteiro temporário
+  Chromium + emuladores `demo-fluxo` com 11/11 grupos aprovados, incluindo logout
+  entre abas e mobile. Revisão independente sem achados bloqueantes.
+  **Próximo passo**: revisão para PR da Onda 1. Ondas 2, 3, 4a e cutover
+  continuam pendentes, fora desta autorização; nenhum deploy realizado.
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -41,7 +47,7 @@ Leia antes de começar; atualize antes de encerrar.
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
-| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ⬜ |
+| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ✅ |
 | 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ⬜ |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ⬜ |
 | 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ⬜ |
@@ -119,6 +125,39 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-17 — Onda 1: front de login, verificado localmente
+
+- Prévia local solicitada pelo usuário após a entrega: servidor em
+  `http://localhost:5500/?emulator=1`, Auth 9099 e Firestore 8080 no
+  `demo-fluxo`, mantidos ligados para inspeção. Conta sintética de Bruno da
+  fixture criada no emulador; login e dashboard conferidos no Chromium.
+- Implementação em `public/index.html`: login e recuperação de senha com
+  Firebase Auth 10.12.0, validação de perfil ativo, identidade/papel do perfil,
+  boot/cache/listeners somente após sessão, saída desktop/mobile com confirmação
+  de pendências e limpeza de dados, modais, listeners e callbacks antigos.
+  Autosave iniciado/encerrado com a sessão; pessoas dinâmicas e auditoria seguem
+  para a Onda 3.
+- Emulador só em `localhost?emulator=1`, projeto `demo-fluxo`, app Firebase
+  nomeado `fluxo-emulator` para isolar a persistência de sessões de produção.
+- Teste entre abas revelou falha real de RF-09 com `getAuth` seguido de
+  `setPersistence`: no SDK 10.12.0 o listener permanecia no armazenamento
+  anterior. Corrigido com `initializeAuth` e `browserLocalPersistence` desde a
+  inicialização; reprodução específica e rodada completa passaram depois.
+- Verificações: `npm run check` (sintaxe, versão única 10.12.0, tsc estrito),
+  `git diff --check`, 12 seletores da spec §9.1 presentes e nenhuma referência
+  à chave exata de identidade antiga ou ao seletor de pessoas.
+- Roteiro temporário `node /tmp/fluxo-wave1-verify.cjs`: **11/11 grupos
+  aprovados**, 0 falhas em 18,252 s; login CEO local em 244 ms. Cobre cache e
+  Firestore antes da sessão, erros de credencial, reset, perfil ausente/inativo,
+  CEO/equipe/Luiza, recarga, logout entre abas/mobile, pendências, SDK bloqueado,
+  rede interrompida e acesso negado. Só contas sintéticas nos emuladores.
+  Evidência local em `/tmp/fluxo-wave1-evidence/results.json` e screenshots.
+- Harness ajustado para aguardar o encerramento nas duas abas e escolher o
+  botão dentro do viewport no mobile; sem suite da Onda 4a adicionada.
+  Revisão independente sem achados bloqueantes. Sem alterações nas regras,
+  configurações ou dependências. Commit local autorizado pelo usuário após a
+  prévia; sem push, deploy ou escrita em produção.
 
 ### 2026-11-16 (fim da noite) — domínio próprio no Firebase Hosting
 

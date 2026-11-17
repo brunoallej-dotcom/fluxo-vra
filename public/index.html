@@ -11,7 +11,8 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { initializeAuth, connectAuthEmulator, browserLocalPersistence, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ── CONFIGURAÇÃO FIREBASE ─────────────────────────────────────────────────
   // INSTRUÇÕES: Substitua os valores abaixo com os do seu projeto Firebase.
@@ -27,13 +28,22 @@
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // Expõe funções para o código principal (não-module)
-  window._fb = { db, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot };
-  window._fbReady = true;
-  document.dispatchEvent(new Event('firebase-ready'));
+  try {
+    const emulator = location.hostname === 'localhost' && new URLSearchParams(location.search).get('emulator') === '1';
+    const app = emulator ? initializeApp({ ...firebaseConfig, projectId:'demo-fluxo' }, 'fluxo-emulator') : initializeApp(firebaseConfig);
+    const auth = initializeAuth(app, { persistence:browserLocalPersistence });
+    const db = getFirestore(app);
+    if (emulator) {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099');
+      connectFirestoreEmulator(db, '127.0.0.1', 8080);
+    }
+    window._fb = { auth, db, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot, signInWithEmailAndPassword, sendPasswordResetEmail, signOut };
+    window._fbReady = true;
+    document.dispatchEvent(new Event('firebase-ready'));
+    onAuthStateChanged(auth, user => window.handleAuthStateChanged(user), e => window.handleFirebaseFailure(e));
+  } catch (e) {
+    window.handleFirebaseFailure(e);
+  }
 </script>
 <style>
 :root {
@@ -151,6 +161,7 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--text); mi
 [data-theme="dark"] .toggle-pill::after { transform:translateX(18px); }
 .user-card { display:flex; align-items:center; gap:12px; padding:8px 4px; cursor:pointer; border-radius:8px; }
 .user-card:hover { background:#1a1a1a; }
+.sidebar-logout { background:none; border:none; color:var(--vra-ivory); font:inherit; font-size:12px; padding:6px 2px; cursor:pointer; }
 .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--vra-copper); color:#fff; font-weight:700; font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .user-info { flex:1; min-width:0; }
 .user-name { font-size:13.5px; font-weight:600; color:var(--vra-ivory); }
@@ -1215,7 +1226,7 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--text); mi
   .agenda-toolbar { gap:10px; }
 }
 
-/* ===== PESSOAS / QUEM SOU EU ===== */
+/* ===== PESSOAS / LOGIN ===== */
 body[data-role="staff"] .dash-avatars { display:none; }
 .user-menu button.neutral { color:var(--vra-ivory); }
 @container (max-width:400px) {
@@ -1223,20 +1234,17 @@ body[data-role="staff"] .dash-avatars { display:none; }
   .tm-plan { display:inline; }
   .tm-card { grid-template-columns:auto 1fr; grid-template-areas:"av main" "bar bar" "run run"; }
 }
-.who-overlay { position:fixed; inset:0; z-index:10000; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; }
-.who-overlay[hidden] { display:none; }
-.who-box { width:100%; max-width:560px; text-align:center; }
-.who-box h2 { font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:24px; }
-.who-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
-.who-card { display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px 14px; border:1px solid var(--border); border-radius:14px; background:var(--surface); color:var(--text); font-family:var(--font-body); cursor:pointer; transition:var(--transition); }
-.who-card:hover { border-color:var(--accent); box-shadow:0 4px 14px rgba(20,20,20,0.1); }
-.who-card.cur { border-color:var(--accent); background:var(--accent-soft); }
-.who-card b { font-size:16px; margin-top:6px; }
-.who-card > span:not(.who-av) { font-size:13px; color:var(--text3); }
-.who-av { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; }
-.who-av.bruno { background:#FBD9C6; color:#3a1d0f; } .who-av.julia { background:#E4DCD0; color:#2a2520; } .who-av.vinicius { background:#DCE8FF; color:#1f3f8f; }
-[data-theme="dark"] .who-av.bruno { background:rgba(232,102,46,0.25); color:#ffd9c4; } [data-theme="dark"] .who-av.julia { background:rgba(179,168,152,0.22); color:#ece5da; } [data-theme="dark"] .who-av.vinicius { background:rgba(108,155,255,0.22); color:#cfe0ff; }
-.who-note { margin-top:22px; font-size:12.5px; color:var(--text3); }
+.app-shell { display:contents; }
+.app-shell[hidden], .login-screen[hidden] { display:none; }
+.login-screen { width:100%; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto; }
+.login-box { width:100%; max-width:380px; }
+.login-box h1 { font-size:26px; margin-bottom:24px; text-align:center; }
+.login-box .btn { width:100%; justify-content:center; margin-top:8px; }
+.login-message { font-size:13px; line-height:1.5; margin-top:16px; }
+.login-message:empty { display:none; }
+.login-error { color:var(--urgent); }
+.login-info { color:var(--text2); }
+.login-box :disabled { opacity:0.6; cursor:wait; }
 
 /* ===== DOCUMENTOS (Health Score) ===== */
 .hs-doc-ic { color:var(--accent); display:inline-flex; }
@@ -1258,10 +1266,26 @@ body[data-role="staff"] .dash-avatars { display:none; }
 [data-theme="dark"] .vra-auto { background-image:var(--logo-white); }
 .sidebar .vra-logo { width:132px; }
 .vra-logo.sm { width:68px; }
-.vra-logo.who { width:230px; margin:0 auto 22px; }
+.vra-logo.login { width:230px; margin:0 auto 22px; }
 </style>
 </head>
 <body>
+
+<div class="login-screen" id="loginScreen" data-testid="login-screen">
+  <div class="login-box">
+    <div class="vra-logo vra-auto login" role="img" aria-label="VRA"></div>
+    <h1>Entre no Fluxo</h1>
+    <form id="loginForm" data-testid="login-form">
+      <div class="form-group"><label class="form-label" for="loginEmail">E-mail</label><input class="form-input" id="loginEmail" data-testid="login-email" type="email" autocomplete="username" required disabled></div>
+      <div class="form-group"><label class="form-label" for="loginPassword">Senha</label><input class="form-input" id="loginPassword" data-testid="login-password" type="password" autocomplete="current-password" required disabled></div>
+      <button class="btn btn-primary" data-testid="login-submit" type="submit" disabled>Entrar</button>
+      <button class="btn btn-ghost" id="loginForgot" data-testid="login-forgot" type="button" disabled>Esqueci minha senha</button>
+    </form>
+    <p class="login-message login-error" id="loginError" data-testid="login-error" role="alert"></p>
+    <p class="login-message login-info" id="loginInfo" data-testid="login-info" role="status" aria-live="polite"></p>
+  </div>
+</div>
+<div class="app-shell" id="appShell" data-testid="app-shell" hidden>
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
@@ -1294,7 +1318,7 @@ body[data-role="staff"] .dash-avatars { display:none; }
     <div class="nav-item" data-page="health" onclick="showPage('health',this)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 20V10M12 20V4M18 20v-7"/></svg></span> Health Score
     </div>
-    <div class="nav-item" data-page="ceo" onclick="showPage('ceo',this)">
+    <div class="nav-item" data-page="ceo" data-testid="nav-ceo" onclick="showPage('ceo',this)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span> CEO View
     </div>
     <div class="nav-item" data-page="rotina" onclick="showPage('rotina',this)">
@@ -1306,7 +1330,7 @@ body[data-role="staff"] .dash-avatars { display:none; }
   </div>
   <div class="sidebar-bottom">
     <div class="user-menu" id="userMenu">
-      <button class="neutral" onclick="toggleUserMenu();openWhoPicker()">Trocar de usuário</button>
+      <button class="neutral" data-testid="logout" onclick="logout()">Sair</button>
       <button onclick="resetAllTasks();toggleUserMenu()">Resetar tarefas</button>
     </div>
     <div class="theme-switch" onclick="toggleTheme()" title="Alternar tema">
@@ -1317,6 +1341,7 @@ body[data-role="staff"] .dash-avatars { display:none; }
     <div class="user-card" onclick="toggleUserMenu()">
       <div class="user-avatar" id="userAvatar">B</div>
       <div class="user-info"><div class="user-name" id="userName">Bruno</div><div class="user-sub" id="userSub">Workspace VRA</div></div>
+      <button class="sidebar-logout" data-testid="logout" onclick="event.stopPropagation();logout()">Sair</button>
       <svg class="user-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
     </div>
   </div>
@@ -1332,14 +1357,14 @@ body[data-role="staff"] .dash-avatars { display:none; }
     <div class="topbar-div"></div>
     <div class="topbar-date" id="todayDate"></div>
     <button class="btn btn-primary" id="topAction" onclick="openModal()">＋ Nova tarefa</button>
-    <button class="mob-avatar" id="mobAvatar" onclick="openWhoPicker()" aria-label="Trocar de usuário">B</button>
+    <button class="mob-avatar" id="mobAvatar" data-testid="logout" onclick="logout()" aria-label="Sair" title="Sair">B</button>
   </header>
 
   <!-- DASHBOARD PAGE -->
   <div class="page active" id="page-dashboard">
     <div class="dash-head">
       <div>
-        <h1 class="dash-h1"><span class="h1-desk">Seu dia, com mais clareza.</span><span class="h1-mob" id="dashGreeting">Bom dia, Bruno.</span></h1>
+        <h1 class="dash-h1"><span class="h1-desk">Seu dia, com mais clareza.</span><span class="h1-mob" id="dashGreeting" data-testid="greeting"></span></h1>
         <div class="dash-date" id="dashDate"></div>
       </div>
       <div class="dash-avatars"></div>
@@ -1610,7 +1635,7 @@ body[data-role="staff"] .dash-avatars { display:none; }
     <button class="mob-nav-item" id="mobnav-tarefas" onclick="showPage('tarefas',null);mobNavActive('tarefas')">
       <span class="mob-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12.5l3 3 5-6"/></svg></span>Tarefas
     </button>
-    <button class="mob-nav-item" id="mobnav-ceo" onclick="showPage('ceo',null);mobNavActive('ceo')">
+    <button class="mob-nav-item" id="mobnav-ceo" data-testid="nav-ceo" onclick="showPage('ceo',null);mobNavActive('ceo')">
       <span class="mob-icon"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>CEO
     </button>
     <button class="mob-nav-item" id="mobnav-semanal" onclick="showPage('semanal',null);mobNavActive('semanal')">
@@ -1856,13 +1881,6 @@ body[data-role="staff"] .dash-avatars { display:none; }
 <!-- MONTH POPUP PORTAL -->
 <div id="monthPopup" class="month-popup" style="display:none;"></div>
 
-<div class="who-overlay" id="whoOverlay" hidden>
-  <div class="who-box">
-    <div class="vra-logo vra-auto who" role="img" aria-label="VRA"></div>
-    <h2>Quem está usando o Fluxo?</h2>
-    <div class="who-list" id="whoList"></div>
-    <p class="who-note">Isso só personaliza a tela neste aparelho.</p>
-  </div>
 </div>
 
 <script>
@@ -1882,6 +1900,162 @@ let editingTaskId = null;
 let taskFilter = 'all';
 let charts = {};
 
+// ─── SESSÃO ──────────────────────────────────────────────────────────────────
+window._session = null;
+let sessionVersion = 0, authAction = 0, authBusy = true, loginNotice = '';
+let autosaveTimer = null, sessionAbort = null;
+const sessionTimeouts = new Set();
+const syncUnsubscribers = [];
+function sessionTimeout(fn, delay) {
+  const session = window._session;
+  const timer = setTimeout(() => {
+    sessionTimeouts.delete(timer);
+    if (session && session === window._session) fn();
+  }, delay);
+  sessionTimeouts.add(timer);
+  return timer;
+}
+function setLoginBusy(busy) {
+  authBusy = busy;
+  document.querySelectorAll('#loginForm input, #loginForm button').forEach(el => { el.disabled = busy || !window._fbReady; });
+  document.getElementById('loginForm').setAttribute('aria-busy', String(busy));
+}
+function clearSessionCache() {
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('fluxo_') && key !== 'fluxo_theme' && key !== 'fluxo_theme_v2') localStorage.removeItem(key);
+  });
+}
+function stopSession() {
+  window._session = null;
+  clearInterval(autosaveTimer); autosaveTimer = null;
+  sessionAbort?.abort(); sessionAbort = null;
+  sessionTimeouts.forEach(clearTimeout); sessionTimeouts.clear();
+  syncUnsubscribers.splice(0).forEach(unsubscribe => unsubscribe());
+  if (_routineUnsub) { _routineUnsub(); _routineUnsub = null; }
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('loginScreen').hidden = false;
+  document.querySelectorAll('#appShell *').forEach(el => { if (window.Sortable?.get) window.Sortable.get(el)?.destroy(); });
+  Object.values(charts).forEach(chart => chart.destroy()); charts = {};
+  tasks = []; meetings = []; clients = []; routineData = emptyRoutine(); activeTimers = {};
+  nextId = 1; nextMid = 1; _tasksLoaded = false; _clientsLoaded = false;
+  editingTaskId = null; editingMeetingId = null; editingRoutineBlock = null; addingRoutineDay = null;
+  hsOpenClientId = null; hsEditingClientId = null; hsEditingDocId = null; hsSelMeetingId = null; hsMtId = null; hsMtPlan = [];
+  selectedOwner = ''; ceoSelected = null; window._ceoDay = null;
+  weekOwnerFilter = 'all'; kanbanOwnerFilter = 'all'; kanbanPriorityFilter = 'all'; currentReportTab = 'geral'; kanbanActiveCat = null;
+  Object.assign(tasksFilter, {status:'all', prio:'all', owner:'all'});
+  hsFilter = 'all'; hsSearch = ''; hsDocSearch = ''; hsTab = 'contratos';
+  sessionTemplates.forEach(({id, html, cls}) => { const el = document.getElementById(id); el.innerHTML = html; el.className = cls; });
+  document.querySelectorAll('.toast, .meeting-alert, #catTip').forEach(el => el.remove());
+  const popup = document.getElementById('monthPopup'); popup.innerHTML = ''; popup.style.display = 'none';
+  document.getElementById('userMenu').classList.remove('open');
+  document.querySelector('.sidebar').classList.remove('mob-open');
+  ['userName', 'userAvatar', 'mobAvatar'].forEach(id => { document.getElementById(id).textContent = ''; });
+  document.getElementById('userSub').textContent = 'Workspace VRA';
+  document.getElementById('crumbSub').textContent = '';
+  document.querySelector('.topbar-title').classList.remove('has-sub');
+  delete document.body.dataset.role;
+  Object.assign(SYNC, {state:'connecting', msg:'Conectando ao banco de dados…', last:null, pending:0, writeFailed:false});
+  document.getElementById('loginPassword').value = '';
+}
+function validProfile(profile) {
+  return profile && profile.active === true && typeof profile.personId === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(profile.personId)
+    && typeof profile.name === 'string' && profile.name.trim().length > 0 && profile.name.length <= 60
+    && typeof profile.initial === 'string' && profile.initial.length > 0 && profile.initial.length <= 2
+    && ['ceo', 'staff'].includes(profile.role) && typeof profile.title === 'string' && profile.title.length <= 40
+    && typeof profile.routineId === 'string' && /^routine(_[A-Za-z0-9_]+)?$/.test(profile.routineId)
+    && (profile.color === undefined || (typeof profile.color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(profile.color)));
+}
+async function endAccess(message) {
+  loginNotice = message;
+  const version = ++sessionVersion;
+  ++authAction;
+  stopSession(); clearSessionCache();
+  document.getElementById('loginError').textContent = message;
+  setLoginBusy(true);
+  try { await window._fb.signOut(window._fb.auth); }
+  catch (e) { console.error(e.code); }
+  finally { if (version === sessionVersion && !window._session) setLoginBusy(false); }
+}
+async function handleAuthStateChanged(user) {
+  const version = ++sessionVersion;
+  ++authAction;
+  stopSession();
+  document.getElementById('loginInfo').textContent = '';
+  if (!user) {
+    clearSessionCache();
+    document.getElementById('loginError').textContent = loginNotice;
+    setLoginBusy(false);
+    return;
+  }
+  setLoginBusy(true);
+  try {
+    const { db, doc, getDoc } = window._fb;
+    const snap = await getDoc(doc(db, 'fluxo_users', user.uid));
+    if (version !== sessionVersion || window._fb.auth.currentUser?.uid !== user.uid) return;
+    const profile = snap.exists() ? snap.data() : null;
+    if (!validProfile(profile)) { await endAccess('Seu acesso ainda não foi liberado. Fale com um CEO.'); return; }
+    window._session = Object.freeze({uid:user.uid, profile:Object.freeze({...profile})});
+    if (localStorage.getItem('fluxo_cache_uid') !== user.uid) clearSessionCache();
+    localStorage.setItem('fluxo_cache_uid', user.uid);
+    loginNotice = '';
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('loginPassword').value = '';
+    document.dispatchEvent(new Event('fluxo-session-start'));
+  } catch (e) {
+    if (version !== sessionVersion) return;
+    console.error(e.code);
+    await endAccess(e.code === 'permission-denied' ? 'Seu acesso ainda não foi liberado. Fale com um CEO.' : 'Sem conexão com a internet. Tente de novo.');
+  }
+}
+function handleFirebaseFailure(e) {
+  console.error(e?.code);
+  ++sessionVersion; ++authAction;
+  stopSession();
+  window._fbReady = false;
+  document.getElementById('loginError').textContent = 'Não foi possível carregar o Firebase.';
+  setLoginBusy(false);
+}
+async function login(event) {
+  event.preventDefault();
+  if (authBusy || !window._fbReady) return;
+  const action = ++authAction;
+  loginNotice = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginInfo').textContent = '';
+  setLoginBusy(true);
+  try {
+    const { auth, signInWithEmailAndPassword } = window._fb;
+    await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
+  } catch (e) {
+    if (action !== authAction) return;
+    console.error(e.code);
+    document.getElementById('loginError').textContent = e.code === 'auth/network-request-failed' ? 'Sem conexão com a internet. Tente de novo.' : e.code === 'auth/too-many-requests' ? 'Muitas tentativas. Aguarde alguns minutos ou redefina a senha.' : 'E-mail ou senha inválidos.';
+  } finally {
+    if (action === authAction && !window._fb.auth.currentUser) setLoginBusy(false);
+  }
+}
+async function forgotPassword() {
+  if (authBusy || !window._fbReady) return;
+  const email = document.getElementById('loginEmail');
+  if (!email.reportValidity()) return;
+  const action = ++authAction;
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginInfo').textContent = '';
+  setLoginBusy(true);
+  try { await window._fb.sendPasswordResetEmail(window._fb.auth, email.value.trim()); }
+  catch (e) { console.error(e.code); }
+  finally {
+    if (action === authAction && !window._session) {
+      document.getElementById('loginInfo').textContent = 'Se o e-mail estiver cadastrado, você vai receber um link para criar uma nova senha.';
+      setLoginBusy(false);
+    }
+  }
+}
+async function logout() {
+  if (!window._session || (SYNC.pending > 0 && !confirm('Há alterações ainda não sincronizadas. Sair mesmo assim?'))) return;
+  await endAccess('');
+}
+
 // ─── PESSOAS ─────────────────────────────────────────────────────────────────
 const PEOPLE = [
   {id:'Bruno',    name:'Bruno',    initial:'B', role:'ceo',   title:'Operacional'},
@@ -1894,14 +2068,18 @@ function ownerInit(id){ const p = person(id); return p ? p.initial : '?'; }
 function avKey(id){ return person(id) ? id.toLowerCase() : 'unknown'; }
 function avatarHtml(id, cls){ return `<span class="${cls || 'mini-av'} ${avKey(id)}" title="${escHtml(ownerName(id))}">${ownerInit(id)}</span>`; }
 function isCeo(id){ const p = person(id); return !!p && p.role === 'ceo'; }
-function me(){ try { return person(localStorage.getItem('fluxo_me')); } catch(e) { return null; } }
-function meId(){ const m = me(); return m ? m.id : 'Bruno'; }
-function iAmCeo(){ const m = me(); return !m || m.role === 'ceo'; }
+function me(){ const profile = window._session?.profile; return profile ? {...profile, id:profile.personId} : null; }
+function meId(){ return me()?.id || ''; }
+function iAmCeo(){ return me()?.role === 'ceo'; }
 
-function loadState() {
-  const saved = localStorage.getItem('fluxo_tasks');
-  return saved ? JSON.parse(saved) : getDefaultTasks();
+function loadCachedArray(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key);
+    const value = saved ? JSON.parse(saved) : fallback;
+    return Array.isArray(value) && value.every(item => item && typeof item === 'object') ? value : fallback;
+  } catch (e) { return fallback; }
 }
+function loadState() { return loadCachedArray('fluxo_tasks', getDefaultTasks()); }
 
 // ─── INDICADOR DE SINCRONIZAÇÃO ──────────────────────────────────────────────
 const SYNC = { state:'connecting', msg:'Conectando ao banco de dados…', last:null, pending:0 };
@@ -1933,23 +2111,25 @@ function syncOk() {
 function syncDetail() { toast(SYNC.msg, SYNC.state === 'err' ? 'warning' : 'info'); }
 // Acompanha uma gravação no Firestore (setDoc/deleteDoc) e reflete o resultado no indicador
 function syncTrack(promise) {
+  const session = window._session;
   SYNC.pending++;
   if (SYNC.state !== 'err') syncSet('saving', 'Salvando no banco de dados…');
-  const slow = setTimeout(() => syncSet('warn', 'O servidor não confirmou a gravação em 10s. Pode estar sem internet; o que você salvou ainda não chegou ao time.'), 10000);
-  return promise.then(() => { clearTimeout(slow); SYNC.pending--; SYNC.writeFailed = false; syncOk(); })
-    .catch(e => { clearTimeout(slow); SYNC.pending--; SYNC.writeFailed = true; console.error(e); syncSet('err', 'Não foi possível salvar no banco (' + (e && (e.code || e.message) || 'erro') + '). O que você salvou fica só neste navegador e o time não vê.'); });
+  const slow = sessionTimeout(() => syncSet('warn', 'O servidor não confirmou a gravação em 10s. Pode estar sem internet; o que você salvou ainda não chegou ao time.'), 10000);
+  return promise.then(() => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = false; syncOk(); })
+    .catch(e => { clearTimeout(slow); sessionTimeouts.delete(slow); if (session !== window._session) return; SYNC.pending--; SYNC.writeFailed = true; console.error(e.code); if (e.code === 'permission-denied') { endAccess('Seu acesso foi encerrado.'); return; } syncSet('err', 'Não foi possível salvar no banco (' + (e.code || 'erro') + '). O que você salvou fica só neste navegador e o time não vê.'); });
 }
 function syncListenError(e) {
-  console.error(e);
-  syncSet('err', 'Não foi possível ler do banco (' + (e && (e.code || e.message) || 'erro') + '). Você pode estar vendo dados desatualizados.');
+  if (!window._session) return;
+  console.error(e.code);
+  if (e.code === 'permission-denied') { endAccess('Seu acesso foi encerrado.'); return; }
+  syncSet('err', 'Não foi possível ler do banco (' + (e.code || 'erro') + '). Você pode estar vendo dados desatualizados.');
 }
 function syncSnapshotOk(snap) { if (!snap.metadata.fromCache && !SYNC.writeFailed) syncOk(); }
-window.addEventListener('offline', () => syncSet('err', 'Sem conexão com a internet. O que você salvar fica só neste navegador.'));
-window.addEventListener('online', () => syncSet('connecting', 'Reconectando…'));
-// Se o SDK do Firebase não carregar (rede, antivírus, extensão), o app roda só local, sem avisar
-setTimeout(() => { if (!window._fbReady) syncSet('err', 'O Firebase não carregou (bloqueado por rede, antivírus ou extensão). Nada que você salvar chega ao time.'); }, 5000);
+window.addEventListener('offline', () => { if (window._session) syncSet('err', 'Sem conexão com a internet. O que você salvar fica só neste navegador.'); });
+window.addEventListener('online', () => { if (window._session) syncSet('connecting', 'Reconectando…'); });
 
 function saveState() {
+  if (!window._session) return;
   localStorage.setItem('fluxo_tasks', JSON.stringify(tasks));
   // Sincroniza com Firebase se disponível
   if (window._fbReady) {
@@ -1959,10 +2139,11 @@ function saveState() {
 }
 
 let _tasksLoaded = false, _clientsLoaded = false;
-function hsMigrateWhenReady() { if (_tasksLoaded && _clientsLoaded) hsMigrateLegacyTasks(); }
+function hsMigrateWhenReady() { if (window._session && _tasksLoaded && _clientsLoaded) hsMigrateLegacyTasks(); }
 
 // Migra client.tasks (formato antigo) para o array global `tasks`. Idempotente via legacyId.
 function hsMigrateLegacyTasks() {
+  if (!window._session) return;
   let changed = false;
   clients.forEach(c => {
     if (!c.tasks || !c.tasks.length) return;
@@ -1981,11 +2162,15 @@ function hsMigrateLegacyTasks() {
 
 // Carrega do Firebase em tempo real e substitui estado local
 function syncFromFirebase() {
-  if (!window._fbReady) return;
+  if (!window._fbReady || !window._session) return;
+  syncUnsubscribers.splice(0).forEach(unsubscribe => unsubscribe());
   const { db, doc, collection, onSnapshot } = window._fb;
+  const session = window._session;
+  const onError = e => { if (session === window._session) syncListenError(e); };
 
   // Tarefas
-  onSnapshot(doc(db, 'fluxo', 'tasks'), snap => {
+  syncUnsubscribers.push(onSnapshot(doc(db, 'fluxo', 'tasks'), snap => {
+    if (session !== window._session) return;
     syncSnapshotOk(snap);
     if (snap.exists()) {
       const remote = JSON.parse(snap.data().data);
@@ -1999,20 +2184,22 @@ function syncFromFirebase() {
     }
     _tasksLoaded = true;
     hsMigrateWhenReady();
-  }, syncListenError);
+  }, onError));
 
   // Reuniões
-  onSnapshot(doc(db, 'fluxo', 'meetings'), snap => {
+  syncUnsubscribers.push(onSnapshot(doc(db, 'fluxo', 'meetings'), snap => {
+    if (session !== window._session) return;
     if (snap.exists()) {
       meetings = JSON.parse(snap.data().data);
       nextMid = meetings.length ? Math.max(...meetings.map(m=>m.id||0))+1 : 1;
       localStorage.setItem('fluxo_meetings', JSON.stringify(meetings));
       if (typeof renderMiniCal === 'function') renderMiniCal();
     }
-  }, syncListenError);
+  }, onError));
 
   // Clientes (Health Score) — um documento por cliente
-  onSnapshot(collection(db, 'fluxo_clients'), snap => {
+  syncUnsubscribers.push(onSnapshot(collection(db, 'fluxo_clients'), snap => {
+    if (session !== window._session) return;
     syncSnapshotOk(snap);
     const remote = snap.docs.map(d => { try { return JSON.parse(d.data().data); } catch(e) { return null; } }).filter(Boolean);
     if (snap.metadata.fromCache && remote.length === 0) return; // não apaga o local por causa de um cache vazio
@@ -2020,7 +2207,7 @@ function syncFromFirebase() {
     hsPersist();
     hsRefreshIfVisible();
     if (!snap.metadata.fromCache || remote.length) { _clientsLoaded = true; hsMigrateWhenReady(); }
-  }, syncListenError);
+  }, onError));
 
   // Rotina (uma por pessoa: Vinicius tem a dele, Bruno/Júlia compartilham)
   subscribeRoutine();
@@ -2028,18 +2215,19 @@ function syncFromFirebase() {
 
 let _routineUnsub = null;
 function subscribeRoutine() {
-  if (!window._fbReady) return;
+  if (!window._fbReady || !window._session) return;
   const { db, doc, onSnapshot } = window._fb;
   if (_routineUnsub) { _routineUnsub(); _routineUnsub = null; }
   const key = routineKey(), lsKey = routineLsKey();
+  const session = window._session;
   _routineUnsub = onSnapshot(doc(db, 'fluxo', key), snap => {
-    if (key !== routineKey()) return;
+    if (session !== window._session || key !== routineKey()) return;
     if (snap.exists()) {
       routineData = JSON.parse(snap.data().data);
       localStorage.setItem(lsKey, JSON.stringify(routineData));
       if (typeof renderRoutine === 'function') renderRoutine();
     }
-  }, syncListenError);
+  }, e => { if (session === window._session) syncListenError(e); });
 }
 
 function loadTheme() {
@@ -2053,22 +2241,19 @@ function toggleTheme() {
   const next = curr === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('fluxo_theme', next);
-  setTimeout(() => rerenderCharts(), 100);
+  sessionTimeout(() => rerenderCharts(), 100);
 }
 
 function getDefaultTasks() {
   return [];
 }
 
-let tasks = loadState();
-let nextId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 1;
-
-// Ensure all tasks have owner
-tasks.forEach(t => { if(!t.owner) t.owner = 'Bruno'; });
-
-let meetings = JSON.parse(localStorage.getItem('fluxo_meetings')||'[]');
-let nextMid = meetings.length ? Math.max(...meetings.map(m=>m.id||0))+1 : 1;
+let tasks = [];
+let nextId = 1;
+let meetings = [];
+let nextMid = 1;
 const saveMeetings = () => {
+  if (!window._session) return;
   localStorage.setItem('fluxo_meetings', JSON.stringify(meetings));
   if (window._fbReady) {
     const { db, doc, setDoc } = window._fb;
@@ -2112,7 +2297,7 @@ function renderPeopleUI(){
   set('meetGroup',  PEOPLE.map(p => `<button class="owner-btn sel-${avKey(p.id)}${meetingParticipants.includes(p.id)?' selected':''}" id="mb-${p.id}" onclick="toggleMeetingPart('${p.id}',this)">${escHtml(p.name)}</button>`).join(''));
 }
 function applyIdentity(){
-  const m = me() || person('Bruno');
+  const m = me(); if (!m) return;
   const ceo = m.role === 'ceo';
   document.body.dataset.role = ceo ? 'ceo' : 'staff';
   const ua = document.getElementById('userAvatar'); if(ua){ ua.textContent = m.initial; }
@@ -2125,9 +2310,11 @@ function applyIdentity(){
   const mb = document.getElementById('mobnav-ceo') || document.getElementById('mobnav-kanban');
   if(mb){
     if(ceo){
+      mb.setAttribute('data-testid', 'nav-ceo');
       mb.id = 'mobnav-ceo'; mb.setAttribute('onclick', "showPage('ceo',null);mobNavActive('ceo')");
       mb.innerHTML = '<span class="mob-icon"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>CEO';
     } else {
+      mb.removeAttribute('data-testid');
       mb.id = 'mobnav-kanban'; mb.setAttribute('onclick', "showPage('kanban',null);mobNavActive('kanban')");
       mb.innerHTML = '<span class="mob-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M9 3v18M15 3v10"/></svg></span>Kanban';
     }
@@ -2139,21 +2326,9 @@ function applyIdentity(){
   if(!ceo && active && active.id === 'page-ceo') showPage('dashboard', document.querySelector('.sidebar .nav-item[data-page="dashboard"]'));
   else if(typeof renderCurrentPage === 'function') renderCurrentPage();
 }
-function openWhoPicker(){
-  const ov = document.getElementById('whoOverlay'), cur = me();
-  document.getElementById('whoList').innerHTML = PEOPLE.map(p => `<button class="who-card${cur && cur.id===p.id ? ' cur' : ''}" onclick="chooseWho('${p.id}')">${avatarHtml(p.id,'who-av')}<b>${escHtml(p.name)}</b><span>${p.role==='ceo' ? 'CEO · ' : ''}${escHtml(p.title)}</span></button>`).join('');
-  ov.hidden = false;
-}
-function chooseWho(id){
-  try { localStorage.setItem('fluxo_me', id); } catch(e) {}
-  document.getElementById('whoOverlay').hidden = true;
-  routineData = loadRoutine();
-  subscribeRoutine();
-  applyIdentity();
-}
-
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
 function showPage(page, el) {
+  if (!window._session) return;
   if(page === 'ceo' && !iAmCeo()){ page = 'dashboard'; el = document.querySelector('.sidebar .nav-item[data-page="dashboard"]'); }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -2259,6 +2434,7 @@ function buildDashTaskRow(t) {
 }
 
 function renderDashboard() {
+  if (!window._session) return;
   const today = fmt(currentDate);
   const todayTasks = getTasksForDate(today).slice().sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
   const done = tasks.filter(t => t.done).length;
@@ -2271,7 +2447,7 @@ function renderDashboard() {
   const dTxt = `${currentDate.getDate()} de ${MESES[currentDate.getMonth()].toLowerCase()}`;
   document.getElementById('dashDate').innerHTML = `<span class="h1-desk">${DIAS_LONGO[currentDate.getDay()]}, ${dTxt}</span><span class="h1-mob">${DIAS[currentDate.getDay()]}, ${dTxt}</span>`;
   const hr = new Date().getHours();
-  document.getElementById('dashGreeting').textContent = (hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite') + ', ' + ownerName(meId()) + '.';
+  document.getElementById('dashGreeting').textContent = (hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite') + ', ' + me().name + '.';
 
   document.getElementById('statCards').innerHTML = `
     <div class="stat-card">
@@ -2398,7 +2574,7 @@ function openMeetingModal(ds, meetingId) {
   const dBtn = document.getElementById('meetingDeleteBtn');
   if(dBtn) dBtn.style.display = existing ? 'inline-flex' : 'none';
   document.getElementById('meetingModal').classList.add('open');
-  setTimeout(()=>document.getElementById('meetingTitle').focus(), 100);
+  sessionTimeout(()=>document.getElementById('meetingTitle').focus(), 100);
 }
 function closeMeetingModal() { document.getElementById('meetingModal').classList.remove('open'); editingMeetingId = null; }
 function toggleMeetingPart(p, btn) {
@@ -2428,6 +2604,7 @@ function deleteMeetingCurrent() {
 }
 document.getElementById('meetingModal').addEventListener('click', function(e){ if(e.target===this) closeMeetingModal(); });
 function checkMeetingAlerts() {
+  if (!window._session) return;
   const now = new Date(), nowStr = fmt(now), hhmm = now.getHours()*60+now.getMinutes();
   meetings.forEach(m => {
     if(m.date!==nowStr||!m.time||m._alerted) return;
@@ -2436,13 +2613,14 @@ function checkMeetingAlerts() {
   });
 }
 function showMeetingAlert(m, minLeft) {
+  if (!window._session) return;
   const el=document.createElement('div'); el.className='meeting-alert';
   el.innerHTML=`<button class="meeting-alert-close" onclick="this.parentElement.remove()">✕</button>
     <div class="meeting-alert-title">⏰ Reunião em ${minLeft<=0?'agora':'~'+minLeft+' min'}</div>
     <div class="meeting-alert-text"><strong>${m.title}</strong><br>${m.time} · ${(m.participants||[]).join(' & ')}</div>
     ${m.meetLink?`<a href="${m.meetLink}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 14px;background:#1a73e8;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">📹 Entrar no Meet</a>`:''}`;
   document.body.appendChild(el);
-  setTimeout(()=>{ if(el.parentElement) el.remove(); }, 30000);
+  sessionTimeout(()=>{ if(el.parentElement) el.remove(); }, 30000);
 }
 
 function openMeetLink(){
@@ -2794,7 +2972,7 @@ function renderCEOContent(who){
         <div class="card dash-card"><div class="dash-card-head"><h2>Tarefas sem horário</h2><a class="see-all" onclick="showPage('tarefas',null)">Ver todas →</a></div>${untimedHtml}</div>
       </div>
     </div>` + buildCeoTaskListSection(myTasks, who);
-  setTimeout(() => initTimelineDragResize(START_H, SLOT_H, viewDate), 30);
+  sessionTimeout(() => initTimelineDragResize(START_H, SLOT_H, viewDate), 30);
 }
 
 function buildCeoTaskListSection(myTasks, who){
@@ -2874,8 +3052,8 @@ function initTimelineDragResize(START_H, SLOT_H, viewDate) {
         renderWeek();
       };
 
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
+      document.addEventListener('mousemove', onMove, {signal:sessionAbort.signal});
+      document.addEventListener('mouseup', onUp, {signal:sessionAbort.signal});
     });
   });
 
@@ -2922,8 +3100,8 @@ function initTimelineDragResize(START_H, SLOT_H, viewDate) {
         renderWeek();
       };
 
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
+      document.addEventListener('mousemove', onMove, {signal:sessionAbort.signal});
+      document.addEventListener('mouseup', onUp, {signal:sessionAbort.signal});
     });
   });
 }
@@ -2945,7 +3123,7 @@ function ceoToday(){ setCeoDate(null, fmt(currentDate)); }
 function ceoPickDate(){ const i = document.getElementById('ceoDateInput'); try { i.showPicker(); } catch(e) { i.focus(); i.click(); } }
 function openModalOwnerDate(who, date){
   openModalOwner(who);
-  setTimeout(()=>{ document.getElementById('taskDateInput').value = date; },50);
+  sessionTimeout(()=>{ document.getElementById('taskDateInput').value = date; },50);
 }
 
 function openModalOwner(who){ openModal(who); }
@@ -3257,11 +3435,12 @@ function routineKey(){ return meId() === 'Vinicius' ? 'routine_Vinicius' : 'rout
 function routineLsKey(){ return 'fluxo_' + routineKey(); }
 function emptyRoutine(){ return [[],[],[],[],[],[],[]]; }
 function loadRoutine(){
-  const saved = localStorage.getItem(routineLsKey());
-  if (saved) return JSON.parse(saved);
-  return meId() === 'Vinicius' ? emptyRoutine() : defaultRoutine();
+  const fallback = meId() === 'Vinicius' ? emptyRoutine() : defaultRoutine();
+  const saved = loadCachedArray(routineLsKey(), fallback);
+  return saved.length === 7 && saved.every(Array.isArray) ? saved : fallback;
 }
 function saveRoutine(){
+  if (!window._session) return;
   localStorage.setItem(routineLsKey(),JSON.stringify(routineData));
   if (window._fbReady) {
     const { db, doc, setDoc } = window._fb;
@@ -3269,7 +3448,7 @@ function saveRoutine(){
   }
 }
 
-let routineData = loadRoutine();
+let routineData = emptyRoutine();
 let editingRoutineBlock = null; // {dayIdx, blockId}
 let addingRoutineDay = null;
 
@@ -3376,7 +3555,7 @@ function addRoutineBlockToDay(dayIdx){
   document.getElementById('rSubs').value = '';
   document.getElementById('rType').value = 'work';
   document.getElementById('routineModal').classList.add('open');
-  setTimeout(()=>document.getElementById('rTitle').focus(),100);
+  sessionTimeout(()=>document.getElementById('rTitle').focus(),100);
 }
 
 function addRoutineBlock(){ addRoutineBlockToDay(0); }
@@ -3739,7 +3918,7 @@ function openModal(owner){
   document.querySelectorAll('.priority-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelector('.priority-btn.medium').classList.add('selected');
   document.getElementById('taskModal').classList.add('open');
-  setTimeout(()=>document.getElementById('taskTitleInput').focus(),100);
+  sessionTimeout(()=>document.getElementById('taskTitleInput').focus(),100);
 }
 
 function closeModal(){
@@ -3773,14 +3952,15 @@ document.getElementById('taskModal').addEventListener('click', function(e){ if(e
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 function toast(msg, type='info'){
+  if (!window._session) return;
   const existing = document.querySelectorAll('.toast');
   existing.forEach(e=>e.remove());
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(()=>el.style.opacity='0',2800);
-  setTimeout(()=>el.remove(),3200);
+  sessionTimeout(()=>el.style.opacity='0',2800);
+  sessionTimeout(()=>el.remove(),3200);
 }
 
 function renderCurrentPage(){
@@ -3800,6 +3980,7 @@ function renderCurrentPage(){
 
 // Keyboard
 document.addEventListener('keydown', e=>{
+  if (!window._session) return;
   if(e.key==='Escape'){ closeModal(); closeRoutineModal(); }
   if((e.ctrlKey||e.metaKey)&&e.key==='k') { openModal(); e.preventDefault(); }
 });
@@ -3900,6 +4081,7 @@ function getTaskElapsed(taskId) {
 
 // Tick running timers every second
 setInterval(() => {
+  if (!window._session) return;
   pruneTimers();
   const runningIds = Object.keys(activeTimers);
   if(runningIds.length === 0) return;
@@ -4007,7 +4189,6 @@ const HS_AV = [['#DCE8FF','#2F6FED'],['#EEE8DF','#6B5F52'],['#DDF3E5','#1A8447']
 const HS_STATUS = [['pago','Pago'], ['em_dia','Em dia'], ['atraso','Em atraso']];
 
 let clients = [];
-try { clients = JSON.parse(localStorage.getItem('fluxo_clients') || '[]'); } catch(e) { clients = []; }
 let hsOpenClientId = null;
 let hsTab = 'contratos';
 let hsDocSearch = '';
@@ -4063,8 +4244,9 @@ function hsCopyText(text) {
 }
 
 // ── persistência (um documento do Firestore por cliente) ──
-function hsPersist() { localStorage.setItem('fluxo_clients', JSON.stringify(clients)); }
+function hsPersist() { if (window._session) localStorage.setItem('fluxo_clients', JSON.stringify(clients)); }
 function saveClient(c) {
+  if (!window._session) return;
   hsPersist();
   if (window._fbReady) {
     const { db, doc, setDoc } = window._fb;
@@ -4072,6 +4254,7 @@ function saveClient(c) {
   }
 }
 function removeClient(id) {
+  if (!window._session) return;
   clients = clients.filter(c => c.id !== id);
   hsPersist();
   if (window._fbReady) {
@@ -4738,24 +4921,30 @@ function mobNavActive(id) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+const sessionTemplates = Array.from(document.querySelectorAll('.page, .modal-overlay')).map(el => ({id:el.id, html:el.innerHTML, cls:el.className}));
 loadTheme();
-restoreActiveTimers();
-applyIdentity();
-if(!me()) openWhoPicker();
-document.getElementById('todayDate').textContent = currentDate.getDate()+' '+MESES_ABR[currentDate.getMonth()]+' '+currentDate.getFullYear();
-renderDashboard();
-
-// Auto-save every 30s
-setInterval(saveState, 30000);
-
-// Inicia sincronização Firebase assim que o SDK estiver pronto
-if (window._fbReady) {
+document.getElementById('loginForm').addEventListener('submit', login);
+document.getElementById('loginForgot').addEventListener('click', forgotPassword);
+document.addEventListener('fluxo-session-start', () => {
+  if (!window._session) return;
+  tasks = loadState();
+  nextId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 1;
+  tasks.forEach(t => { if (!t.owner) t.owner = 'Bruno'; });
+  meetings = loadCachedArray('fluxo_meetings', []);
+  nextMid = meetings.length ? Math.max(...meetings.map(m=>m.id||0))+1 : 1;
+  clients = loadCachedArray('fluxo_clients', []);
+  routineData = loadRoutine();
+  sessionAbort = new AbortController();
+  restoreActiveTimers();
+  applyIdentity();
+  document.getElementById('todayDate').textContent = currentDate.getDate()+' '+MESES_ABR[currentDate.getMonth()]+' '+currentDate.getFullYear();
+  showPage('dashboard', document.querySelector('.sidebar .nav-item[data-page="dashboard"]'));
+  document.getElementById('loginScreen').hidden = true;
+  document.getElementById('appShell').hidden = false;
   syncFromFirebase();
-} else {
-  document.addEventListener('firebase-ready', syncFromFirebase);
-  // Sem Firebase (uso local): migra direto com os dados do localStorage
-  setTimeout(() => { if (!window._fbReady) hsMigrateLegacyTasks(); }, 3000);
-}
+  autosaveTimer = setInterval(() => { if (window._session) saveState(); }, 30000);
+});
+setTimeout(() => { if (!window._fbReady) handleFirebaseFailure(); }, 5000);
 </script>
 </body>
 </html>
