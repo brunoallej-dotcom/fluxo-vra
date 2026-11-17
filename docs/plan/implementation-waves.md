@@ -21,10 +21,10 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ✅ |
-| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`public/index.html`) | 0, S4 | 2, 4a | ⬜ |
+| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`public/index.html`) | 0, S4 | 2, 4a | ✅ |
 | 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ✅ (não publicada — só no cutover) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`public/index.html`) | 1 | 2, 4a | ⬜ |
-| 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ⬜ |
+| 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração (E2E verde com 1+2+3+4a) e cutover em produção | 2, 3, 4a | — | ⬜ |
 
 ### Frentes paralelas
@@ -80,6 +80,11 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
 
 ## Onda 1 — Login e gate de sessão
 
+- **Verificação local (2026-11-17)**: concluída na branch `feat/onda-1-login`,
+  registrada em commit local, sem publicação. Check estático e 12 seletores da spec verdes;
+  roteiro temporário Chromium + emuladores `demo-fluxo` com 11/11 grupos
+  aprovados, incluindo recarga, logout entre abas e mobile. Detalhes no diário
+  do `NOTES.md`.
 - **Objetivo**: ninguém vê nem lê dados sem estar logado com perfil ativo.
 - **Escopo (slices/arquivos)**: `public/index.html` — módulo Firebase (importa
   `firebase-auth.js` 10.12.0; modo emulador da spec §9.2), tela de login
@@ -94,13 +99,14 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   (arquivos disjuntos; contrato e seletores congelados).
 - **Critérios de aceite**:
   - `npm run check` termina com código 0.
-  - `grep -c "fluxo_me\|openWhoPicker\|chooseWho" public/index.html` retorna 0.
+  - `grep -Ec "fluxo_me['\"]|openWhoPicker|chooseWho" public/index.html` imprime 0
+    (chave de identidade exata; `fluxo_meetings` continua sendo o cache de reuniões).
   - Os seletores da spec §9.1 existem no `public/index.html`.
   - Com os emuladores rodando e `index.html?emulator=1`: sem sessão aparece só o
     login; login de CEO mostra o dashboard e a CEO View; login de `staff` não
     mostra a CEO View; "Sair" volta ao login e o `localStorage` fica sem
     chaves `fluxo_*` além do tema (conferido pela skill `verify`).
-- **Goal command**: `/goal npm run check termina com código 0, grep -c "fluxo_me\|openWhoPicker\|chooseWho" public/index.html imprime 0 e todos os data-testid da spec §9.1 aparecem no index.html, stop after 6 tries`
+- **Goal command**: `/goal npm run check termina com código 0, a chave exata fluxo_me e as funções openWhoPicker/chooseWho não existem no index.html e todos os data-testid da spec §9.1 aparecem nele, stop after 6 tries`
 
 ## Onda 2 — Regras do Firestore
 

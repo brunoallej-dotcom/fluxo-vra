@@ -9,7 +9,7 @@ Leia antes de começar; atualize antes de encerrar.
 - **Situação**: S1, S3, S4 e S5 concluídos; S2 com pendência (backup).
   **App servido pelo Firebase Hosting em `https://crm.somosvra.com.br` desde
   2026-11-16.** Regras de contenção em produção desde 2026-11-16, verificadas pelo
-  usuário no app. O app ainda **não tem login** e a **leitura continua pública**.
+  usuário no app. O app em produção ainda **não tem login** e a **leitura continua pública**.
 - **Restrição do usuário (2026-11-16): nenhum plano pago por enquanto** —
   Firebase Spark, GitHub Free. Consequências:
   - backup: sem PITR/backup gerenciado → exportação diária criptografada via
@@ -26,12 +26,17 @@ Leia antes de começar; atualize antes de encerrar.
   os registros DNS `crm` e sem desligar a CDN do site (pode reescrever o
   DNS); conferir o CNAME depois. Plano de volta até lá: spec de hospedagem §4.
 - **Frentes (desde 2026-11-17)**: A (front, Ondas 1 → 3) no **Codex**, pelo
-  usuário; B e C com subagentes coordenados pelo Claude Code. **Onda 2 pronta**
-  (regras completas + R01–R13 e X01–X17, auditadas) — **não publicar antes do
-  cutover**: o app atual não grava `updatedBy`/`updatedAt` e cairia para
-  todos. Onda 4a em PR (#11).
-- **Próximo passo**: merge da Onda 4a; frente A segue no Codex; depois Onda 3 e
-  cutover (4b), este só com o usuário.
+  usuário, até a Onda 1; a partir daí o Claude Code assume como manager (pedido
+  do usuário, com autonomia para commit/PR/merge, sem produção). B e C com
+  subagentes coordenados pelo Claude Code.
+  - **Onda 1** (Codex, commit `8ed8183`): login, gate de sessão, "Sair",
+    "Esqueci minha senha", autosave só com sessão. Testada pelo usuário.
+  - **Onda 2** (PR #12): regras completas + R01–R13 e X01–X17, auditadas —
+    **não publicar antes do cutover**: o app atual não grava
+    `updatedBy`/`updatedAt` e cairia para todos.
+  - **Onda 4a** (PR #11): E2E E01–E08 e how-to do cutover.
+- **Próximo passo**: Onda 3 (pessoas dinâmicas, rotina por perfil, `fbWrite`
+  com auditoria — faz o E08 passar); depois cutover (4b), **só com o usuário**.
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -46,10 +51,10 @@ Leia antes de começar; atualize antes de encerrar.
 | Onda | Entrega | Depende de | Paralela com | Status |
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
-| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ⬜ |
+| 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ✅ |
 | 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ✅ (não publicada) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ⬜ |
-| 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ⬜ |
+| 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração e cutover em produção | 2, 3, 4a | — | ⬜ |
 
 Frentes paralelas depois de S1–S5: **A** = Ondas 1 → 3 (`public/index.html`,
@@ -130,6 +135,39 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-17 — Onda 1: front de login, verificado localmente
+
+- Prévia local solicitada pelo usuário após a entrega: servidor em
+  `http://localhost:5500/?emulator=1`, Auth 9099 e Firestore 8080 no
+  `demo-fluxo`, mantidos ligados para inspeção. Conta sintética de Bruno da
+  fixture criada no emulador; login e dashboard conferidos no Chromium.
+- Implementação em `public/index.html`: login e recuperação de senha com
+  Firebase Auth 10.12.0, validação de perfil ativo, identidade/papel do perfil,
+  boot/cache/listeners somente após sessão, saída desktop/mobile com confirmação
+  de pendências e limpeza de dados, modais, listeners e callbacks antigos.
+  Autosave iniciado/encerrado com a sessão; pessoas dinâmicas e auditoria seguem
+  para a Onda 3.
+- Emulador só em `localhost?emulator=1`, projeto `demo-fluxo`, app Firebase
+  nomeado `fluxo-emulator` para isolar a persistência de sessões de produção.
+- Teste entre abas revelou falha real de RF-09 com `getAuth` seguido de
+  `setPersistence`: no SDK 10.12.0 o listener permanecia no armazenamento
+  anterior. Corrigido com `initializeAuth` e `browserLocalPersistence` desde a
+  inicialização; reprodução específica e rodada completa passaram depois.
+- Verificações: `npm run check` (sintaxe, versão única 10.12.0, tsc estrito),
+  `git diff --check`, 12 seletores da spec §9.1 presentes e nenhuma referência
+  à chave exata de identidade antiga ou ao seletor de pessoas.
+- Roteiro temporário `node /tmp/fluxo-wave1-verify.cjs`: **11/11 grupos
+  aprovados**, 0 falhas em 18,252 s; login CEO local em 244 ms. Cobre cache e
+  Firestore antes da sessão, erros de credencial, reset, perfil ausente/inativo,
+  CEO/equipe/Luiza, recarga, logout entre abas/mobile, pendências, SDK bloqueado,
+  rede interrompida e acesso negado. Só contas sintéticas nos emuladores.
+  Evidência local em `/tmp/fluxo-wave1-evidence/results.json` e screenshots.
+- Harness ajustado para aguardar o encerramento nas duas abas e escolher o
+  botão dentro do viewport no mobile; sem suite da Onda 4a adicionada.
+  Revisão independente sem achados bloqueantes. Sem alterações nas regras,
+  configurações ou dependências. Commit local autorizado pelo usuário após a
+  prévia; sem push, deploy ou escrita em produção.
 
 ### 2026-11-16 (fim da noite) — domínio próprio no Firebase Hosting
 
