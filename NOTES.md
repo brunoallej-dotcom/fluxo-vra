@@ -195,7 +195,9 @@ Detalhes e propostas na spec, §8.
   commit; `crm.somosvra.com.br` e `web.app` entregam o mesmo sha256 do
   repositório.
 - Achado anterior, fora do escopo: CEO View no celular com os nomes das
-  pessoas sobrepostos (`.ceo-people` sem quebra de linha no mobile).
+  pessoas sobrepostos (`.ceo-people` sem quebra de linha no mobile). Corrigido
+  depois pelo `junin-1` (onda C1, branch `fix/ceo-view-mobile`): grade de 2
+  colunas só no celular; E2E 9/9 e prints claro/escuro conferidos.
 
 ### 2026-11-18 — cutover do login em produção (Onda 4b)
 
