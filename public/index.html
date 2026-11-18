@@ -1164,8 +1164,9 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--text); mi
 .sortable-ghost.routine-item { opacity:0.4; }
 @media (max-width:1100px) { .ceo-grid { grid-template-columns:1fr; } .ceo-goal { grid-template-columns:auto auto minmax(0,1fr); } .ceo-goal-pct { grid-column:1/-1; text-align:left; } }
 @media (max-width:768px) {
-  .ceo-person { min-width:0; flex:1; padding:8px 10px; font-size:13px; }
-  .ceo-people { width:100%; flex-wrap:nowrap; }
+  .ceo-person { min-width:0; width:100%; padding:8px 10px; font-size:13px; white-space:normal; overflow-wrap:anywhere; }
+  .ceo-person .mini-av { flex-shrink:0; }
+  .ceo-people { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; width:100%; }
   .ceo-date { width:100%; justify-content:space-between; }
   .ceo-date-label { min-width:0; flex:1; }
   .ceo-goal { padding:16px; gap:12px; }
