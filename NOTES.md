@@ -197,7 +197,9 @@ Detalhes e propostas na spec, §8.
 - Achado anterior, fora do escopo: CEO View no celular com os nomes das
   pessoas sobrepostos (`.ceo-people` sem quebra de linha no mobile). Corrigido
   depois pelo `junin-1` (onda C1, branch `fix/ceo-view-mobile`): grade de 2
-  colunas só no celular; E2E 9/9 e prints claro/escuro conferidos.
+  colunas só no celular; E2E 9/9 e prints claro/escuro conferidos. PR #22
+  (`7a02b81`) mergeado e publicado no Hosting com confirmação do usuário
+  (domínio com o mesmo sha256 da `main`).
 
 ### 2026-11-18 — cutover do login em produção (Onda 4b)
 
