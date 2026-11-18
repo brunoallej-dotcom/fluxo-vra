@@ -202,8 +202,8 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
 | V1 | Tokens de cor, barra lateral verde, logo nova embutida (`public/index.html`) | Manager (feita antes da divisão de tarefas) | — | — | ✅ |
 | V2 | Verificação: E2E E01–E09 e prints claro/escuro, computador/celular | `junin-1` | V1 | V3 | ✅ (9/9, 38 prints) |
 | V3 | Revisão independente do diff (contraste RV-07, cor antiga esquecida, regressão) | `junin02` | V1 | V2 | ✅ |
-| V4 | Correções dos achados (`junin02`, commit `195da92`), PR com CI verde, squash merge | Manager + juninhos | V2, V3 | — | 🟡 (correções feitas; falta PR/merge) |
-| V5 | Publicar o Hosting (`--project prod`) | Usuário confirma | V4 | — | ⏳ |
+| V4 | Correções dos achados (`junin02`, commit `195da92`), troca para o verde escuro `#1A4A09` a pedido do usuário, PR com CI verde, squash merge | Manager + juninhos | V2, V3 | — | ✅ (PR #20, `07cccfb`) |
+| V5 | Publicar o Hosting (`--project prod`) | Usuário confirma | V4 | — | ✅ (2026-11-18, da `07cccfb`) |
 
 ## Notas de execução
 
