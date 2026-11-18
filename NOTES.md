@@ -15,8 +15,10 @@ Leia antes de começar; atualize antes de encerrar.
   - backup: sem PITR/backup gerenciado → exportação diária criptografada via
     GitHub Actions (spec a escrever); até lá, cópia local em `backups/`
     (recomendado ao usuário criptografar com `gpg -c`);
-  - proteção da `main`: sem branch protection → `.githooks/pre-push` + regras
-    `deny` do `git push` no `.claude/settings.json`.
+  - proteção da `main`: ruleset do GitHub "Proteger main" (desde 2026-11-17,
+    gratuito com o repositório público) — PR obrigatório, os dois checks do CI
+    verdes e branch atualizada, só squash, sem force push nem exclusão, sem
+    bypass; mais `.githooks/pre-push` e regras `deny` locais.
 - **S5**: concluído. PR #7 (`6088d65`); Hosting no `web.app` e, depois da
   troca de DNS, em `crm.somosvra.com.br` (ALIAS da CDN da Hostinger trocado
   por `CNAME crm → fluxo-app-59174.web.app`; certificado Google Trust Services
@@ -35,16 +37,17 @@ Leia antes de começar; atualize antes de encerrar.
     **não publicar antes do cutover**: o app atual não grava
     `updatedBy`/`updatedAt` e cairia para todos.
   - **Onda 4a** (PR #11): E2E E01–E08 e how-to do cutover.
-  - **Onda 3** (PR #14, empilhado no #13): `PEOPLE` de `fluxo_users`, rotina
+  - **Onda 3** (PR #16, que substituiu o #14): `PEOPLE` de `fluxo_users`, rotina
     pelo `routineId`, `fbWrite` com `updatedBy`/`updatedAt`, autosave só com
     alteração. E2E **E01–E08 verdes** contra as regras completas.
 - **CI (2026-11-17)**: parou por cobrança da conta com o repositório privado;
   o usuário tornou o repositório **público** (Actions gratuito). Histórico
   conferido antes dos merges: nunca entrou `backups/`, arquivo de ambiente
-  real nem chave. Onda 1 mergeada (#13); gate de SCA com exceção datada (#15).
-- **Próximo passo**: merge da Onda 3 → cutover (Onda 4b,
-  `docs/how-to/cutover-login.md`), **só com o usuário** (produção). Com o
-  repositório público, o GitHub Free permite proteger a `main` (ruleset).
+  real nem chave. Onda 1 mergeada (#13); gate de SCA com exceção datada (#15);
+  Onda 3 mergeada (#16). E2E **8/8 na `main` final** (`9e8cb14`).
+- **Próximo passo**: cutover (Onda 4b, `docs/how-to/cutover-login.md`), **só
+  com o usuário** (produção). Recomendado logo: com o repositório público, a
+  documentação aponta que a leitura do banco ainda é aberta até o cutover.
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -86,6 +89,8 @@ front-end, sessão principal), **B** = Onda 2 (regras do banco), **C** = Onda 4a
 | 2026-11-16 | gitleaks: exceção só da regra `generic-api-key` só em `tests/fixtures/users.json` (senhas fictícias do emulador), via `[[rules.allowlists]]` — sintaxe do gitleaks 8.24 | `.gitleaks.toml`, issue #2 |
 | 2026-11-16 | `.firebaserc` com `default: demo-fluxo`; produção só pelo alias `prod` | `.firebaserc` |
 | 2026-11-16 | Mensagens de commit e títulos de PR em inglês (AISAC git-workflow); docs e UI seguem em pt-BR | — |
+| 2026-11-17 | Repositório público (Actions gratuito) e `main` protegida por ruleset do GitHub | Decisão do usuário; `AGENTS.md` |
+| 2026-11-17 | Exclusivo de CEO é só a tela CEO View; o conteúdo dela (tarefas por pessoa) a equipe já vê em Tarefas, Agenda Semanal e Kanban → sem mudança nas regras | Resposta do usuário; spec §3.4 |
 
 ## Questões em aberto
 
@@ -101,7 +106,9 @@ Detalhes e propostas na spec, §8.
 ## Riscos conhecidos
 
 - **CEO View só de interface**: as regras não usam `role`; todo membro ativo
-  lê os mesmos dados (spec §3.4). Perguntado ao usuário se há dado só de CEO.
+  lê os mesmos dados (spec §3.4). Aceito em 2026-11-17: o usuário respondeu
+  que só a tela CEO View é de CEO, e o conteúdo dela a equipe já vê nas outras
+  telas. Dado novo exclusivo de CEO exige documento próprio com regra por `role`.
 - **Última gravação vence em `fluxo/tasks`** (documento único): edição
   offline de uma pessoa pode sobrescrever a de outra ao reconectar. Fase 2.
 - **Leitura pública em produção até o cutover** (Onda 4b): desde 2026-11-16
@@ -147,6 +154,21 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-17 (manhã) — merges com o CI de volta e `main` protegida
+
+- Repositório público → CI voltou. Alerta high novo do `npm audit`
+  (GHSA-fc5q-39xc-vjpf, picomatch, só tooling, sem versão corrigida): gate
+  `scripts/audit-gate.mjs` com exceção até 2026-12-31 (#15).
+- Ondas 1 (#13) e 3 (#16, reaplicada sobre a `main` depois do squash do #13;
+  #14 fechado) mergeadas com CI verde; E2E 8/8 na `main` final.
+- Ruleset "Proteger main" criado via API do GitHub (id 27511710): PR com
+  0 aprovações (dono único), checks `Varredura de segredos (gitleaks)` e
+  `Check + dependências + regras do Firestore (emulador)` com branch
+  atualizada, só squash, bloqueio de force push e exclusão, sem bypass.
+- Respostas do usuário: proteger a `main` = sim; exclusivo de CEO = só a tela
+  CEO View (sem mudança nas regras). Pendente: confirmação antes de sair pelo
+  avatar no celular.
 
 ### 2026-11-17 (madrugada) — Claude Code como manager das frentes
 
