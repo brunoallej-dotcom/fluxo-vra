@@ -190,6 +190,21 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   negativo: 403 em todas as coleções e na escrita anônima.
 - **Goal command**: `/goal npm run test:e2e termina com código 0 e a saída lista E01 a E08 como passed, stop after 8 tries` (os passos de produção são manuais e ficam fora do goal loop)
 
+## Identidade visual VRA (2026-11-18)
+
+> Spec: [`docs/specs/identidade-visual.md`](../specs/identidade-visual.md).
+> Branch `feat/brand-colors-logo`, worktree `.claude/worktrees/brand-colors`.
+> Spec e ondas pelo manager (Claude Code); execução pelos workers Codex
+> (`junin-1`, `junin-2`), por pedido do usuário.
+
+| Onda | Entrega | Executor | Depende de | Paralela com | Status |
+|------|---------|----------|------------|--------------|--------|
+| V1 | Tokens de cor, barra lateral verde, logo nova embutida (`public/index.html`) | Manager (feita antes da divisão de tarefas) | — | — | ✅ |
+| V2 | Verificação: E2E E01–E09 e prints claro/escuro, computador/celular | `junin-1` | V1 | V3 | ⏳ |
+| V3 | Revisão independente do diff (contraste RV-07, cor antiga esquecida, regressão) | `junin-2` | V1 | V2 | ⏳ |
+| V4 | Correções dos achados, PR com CI verde, squash merge | Manager + juninhos | V2, V3 | — | ⏳ |
+| V5 | Publicar o Hosting (`--project prod`) | Usuário confirma | V4 | — | ⏳ |
+
 ## Notas de execução
 
 - Ondas sequenciais rodam na sessão principal, uma branch/PR por onda
