@@ -94,9 +94,11 @@ Na Fase 1, todo documento de dados ganha `updatedBy` e `updatedAt`.
    sempre na mesma versão (`10.12.0`).
 7. **Commits.** Conventional Commits em inglês, atômicos, em branch (nunca
    direto na `main`). Commit e push só quando o usuário pedir. A `main` só
-   recebe PR com CI verde e squash merge; o `.githooks/pre-push` (ativado pelo
-   `npm install`) recusa push direto nela, porque o GitHub Free não oferece
-   branch protection em repositório privado.
+   recebe PR com CI verde e squash merge. Isso é imposto pelo ruleset
+   "Proteger main" do GitHub (gratuito porque o repositório é público): PR
+   obrigatório, os dois checks do CI verdes com a branch atualizada, só squash
+   merge, sem force push e sem exclusão. Localmente, o `.githooks/pre-push`
+   (ativado pelo `npm install`) também recusa push direto na `main`.
 
 ## Hospedagem e deploy
 

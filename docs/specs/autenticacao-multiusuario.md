@@ -156,7 +156,11 @@ backups e `updatedBy`; resolvido na Fase 2 (um documento por item).
 não usam `role`: todo membro ativo lê os mesmos documentos que a CEO View
 agrega (hoje tarefas, reuniões e clientes já são compartilhados por todos).
 Um dado exclusivo de CEO, se surgir, precisa de documento próprio com regra
-`get(profilePath()).data.role == 'ceo'`.
+`get(profilePath()).data.role == 'ceo'`. **Confirmado com o usuário em
+2026-11-17:** o único item exclusivo de CEO é a própria tela; o conteúdo dela
+(tarefas de cada pessoa) a equipe já vê em Tarefas, Agenda Semanal e Kanban.
+Para `staff`, a tela fica fora do menu e `showPage('ceo')` redireciona ao
+dashboard.
 
 **Limite de tamanho:** `data.size() <= 900000` conta caracteres, não bytes. Com
 acentos, o documento pode passar de 1 MiB antes desse limite; aí o Firestore
