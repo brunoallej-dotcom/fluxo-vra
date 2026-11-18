@@ -16,7 +16,7 @@ serifa:
 |---|---|---|
 | Branco creme | `#FAFAF4` | Superfície dos cartões e painéis; texto sobre o verde |
 | Laranja | `#D9540D` | Destaque (`--accent`): botões principais, item ativo, hoje no calendário, gráficos, avatar |
-| Verde | `#29710E` | Barra lateral; cor de "concluído/em dia" (`--calm`) |
+| Verde | `#1A4A09` | Barra lateral; cor de "concluído/em dia" (`--calm`). O usuário pediu `#29710E`, viu os prints e preferiu o verde escuro (2026-11-18) |
 
 **Fora do escopo:** mudar layout, espaçamentos, fontes ou textos; cores de
 pessoas que não são da marca (Júlia, Vinicius, paleta de avatares de
@@ -29,9 +29,9 @@ clientes); cores de prioridade (urgente/médio); cores gravadas em
 |---|---|
 | RV-01 | Tema claro: fundo da página creme mais escuro (`#F1F1E7`), cartões em creme `#FAFAF4`, textos e bordas em neutros puxados para o verde. Nada de branco puro em superfícies grandes. |
 | RV-02 | Destaque laranja `#D9540D` em todo lugar onde hoje há cobre (CSS, gráficos do Chart.js, legenda da rotina, categoria "Tráfego Pago", relatório). Hover do botão principal: `#B9470A`. Laranja usado como **cor de texto** sai de `--accent-text` (`#B4450A` no claro, `#E86B30` no escuro), para passar de 4,5:1; o `#D9540D` fica para fundos, bordas, barras e ícones. |
-| RV-03 | Barra lateral verde `#29710E` com texto creme; item ativo em pílula creme com texto verde, ícone laranja e filete laranja à esquerda; menu do usuário em verde mais escuro. |
+| RV-03 | Barra lateral verde `#1A4A09` (nos dois temas) com texto creme; item ativo em pílula creme com texto verde, ícone laranja e filete laranja à esquerda; menu do usuário em verde mais escuro. |
 | RV-04 | Verde da marca como `--calm` (concluído, em dia, sincronizado), com fundo suave por token (`--calm-soft`) que funciona nos dois temas. |
-| RV-05 | Tema escuro: neutros quase pretos puxados para o verde (`#0D130B` …), texto creme, barra lateral em verde profundo (`#1A4A09`), verde de status mais claro (`#5FAE3E`) para manter contraste. |
+| RV-05 | Tema escuro: neutros quase pretos puxados para o verde (`#0D130B` …), texto creme, mesma barra lateral `#1A4A09`, verde de status mais claro (`#5FAE3E`) para manter contraste. |
 | RV-06 | Logo: monograma novo, com fundo transparente, em duas versões — laranja (fundos claros) e creme (barra verde e tema escuro) — embutido em base64 nas variáveis `--logo-dark` e `--logo-white`, sem arquivo extra. Proporção 617 × 389. |
 | RV-07 | Contraste (WCAG): texto comum ≥ 4,5:1 sobre o fundo onde aparece, nos dois temas; texto da barra lateral ≥ 4,5:1 sobre o verde (rótulos pequenos em caixa alta ≥ 3:1). Exceção conhecida: texto branco sobre o laranja da marca dá ~4,0:1 (antes, sobre o cobre, dava ~3,3:1) — aceita por ser a cor pedida, usada em botões e selos em negrito. |
 | RV-08 | Nenhuma mudança de comportamento: mesmos seletores `data-testid`, E2E E01–E09 verdes, `npm run check` verde. |
@@ -59,3 +59,7 @@ clientes); cores de prioridade (urgente/médio); cores gravadas em
 - Achado fora do escopo, **anterior** a esta mudança: na CEO View no celular,
   os botões de pessoa ficam numa linha só e os nomes se sobrepõem (regra
   `.ceo-people { flex-wrap:nowrap }` do bloco mobile).
+- Ajuste pedido pelo usuário depois dos prints: o verde `#29710E` saiu; o
+  verde escuro `#1A4A09` (antes só na barra do tema escuro) passou a ser o verde
+  da barra lateral nos dois temas e o `--calm` do tema claro (9,89:1 sobre o
+  creme; texto da barra ≥ 7:1).

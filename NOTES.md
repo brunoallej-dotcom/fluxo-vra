@@ -49,7 +49,7 @@ Leia antes de começar; atualize antes de encerrar.
   Onda 3 mergeada (#16). E2E **8/8 na `main` final** (`9e8cb14`); com o
   E09 (avatar do celular pede confirmação), 9/9.
 - **Identidade visual VRA (2026-11-18)**: paleta creme `#FAFAF4`, laranja
-  `#D9540D` e verde `#29710E`, e logo nova (monograma) na branch
+  `#D9540D` e verde escuro `#1A4A09` (o usuário trocou o `#29710E` depois dos prints), e logo nova (monograma) na branch
   `feat/brand-colors-logo` ([spec](docs/specs/identidade-visual.md)). Ondas
   V1–V3 ✅ (E2E 9/9, 38 prints, revisão com contraste corrigido); falta PR,
   merge e publicar o Hosting (só com confirmação). Execução pelos workers
@@ -188,6 +188,8 @@ Detalhes e propostas na spec, §8.
 - V2 (`junin-1`): E2E 9/9; 38 prints. V3 (`junin02`): três falhas de
   contraste → corrigidas por ele (`--accent-text`, `--text3`, `--vra-dim`,
   neutros e sombras esverdeados), conferidas pelo manager (`195da92`).
+- Usuário viu os prints e não gostou do verde `#29710E`: trocado pelo verde
+  escuro `#1A4A09` em todo o tema claro (`junin02`, conferido).
 - Achado anterior, fora do escopo: CEO View no celular com os nomes das
   pessoas sobrepostos (`.ceo-people` sem quebra de linha no mobile).
 

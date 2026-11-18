@@ -49,7 +49,7 @@
 :root {
   --font-display: 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
-  /* Paleta VRA: creme #FAFAF4, laranja #D9540D, verde #29710E */
+  /* Paleta VRA: creme #FAFAF4, laranja #D9540D, verde #1A4A09 */
   --accent: #D9540D;
   --accent-hover: #B9470A;
   --accent-text: #B4450A;
@@ -58,8 +58,8 @@
   --accent2-soft: rgba(238,123,59,0.12);
   --urgent: #E5484D;
   --medium: #F5A524;
-  --calm: #29710E;
-  --calm-soft: rgba(41,113,14,0.12);
+  --calm: #1A4A09;
+  --calm-soft: rgba(26,74,9,0.12);
   --bg: #F1F1E7;
   --bg2: #F7F7EF;
   --bg3: #F4F4EA;
@@ -83,8 +83,8 @@
   --vinicius: #2F6FED;
   --vinicius-soft: #DCE8FF;
   /* VRA brand tokens (barra lateral verde da marca) */
-  --vra-green: #29710E;
-  --vra-green-deep: #1F5A0A;
+  --vra-green: #1A4A09;
+  --vra-green-deep: #123607;
   --vra-cream: #FAFAF4;
   --vra-orange: #D9540D;
   --vra-orange-soft: rgba(217,84,13,0.14);
@@ -110,8 +110,6 @@
   --text: #FAFAF4;
   --text2: #BAC2B2;
   --text3: #8A9482;
-  --vra-green: #1A4A09;
-  --vra-green-deep: #123607;
   --shadow: 0 4px 24px rgba(0,0,0,0.5);
   --julia: #B3A898;
   --julia-soft: rgba(179,168,152,0.14);
@@ -580,7 +578,7 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--text); mi
 
 /* TASK TIMER */
 .timer-group { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:99px; background:var(--bg3); border:1px solid var(--border); flex-shrink:0; transition:var(--transition); }
-.timer-group.running { background:var(--calm-soft); border-color:rgba(41,113,14,0.35); }
+.timer-group.running { background:var(--calm-soft); border-color:rgba(26,74,9,0.35); }
 .timer-btn { width:24px; height:24px; border-radius:50%; border:none; background:transparent; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:11px; transition:var(--transition); flex-shrink:0; }
 .timer-btn:hover { background:var(--bg4); color:var(--text); }
 .timer-btn.running { color:var(--calm); animation:pulse 1.5s infinite; }
@@ -1574,7 +1572,7 @@ body[data-role="staff"] .dash-avatars { display:none; }
         <div class="dash-date">Uma semana com espaço para o que importa.</div>
       </div>
       <div class="rt-legend">
-        <span><i style="background:#D9540D"></i>Trabalho</span><span><i style="background:#F5A524"></i>Pessoal</span><span><i style="background:#29710E"></i>Saúde</span><span><i style="background:#707763"></i>Igreja</span>
+        <span><i style="background:#D9540D"></i>Trabalho</span><span><i style="background:#F5A524"></i>Pessoal</span><span><i style="background:#1A4A09"></i>Saúde</span><span><i style="background:#707763"></i>Igreja</span>
       </div>
     </div>
     <div class="rt-wrap"><div class="routine-grid" id="routineGrid"></div></div>
@@ -3507,7 +3505,7 @@ const R_GROUP = {
   work:      {name:'Trabalho', color:'#D9540D'},
   meal:      {name:'Pessoal',  color:'#F5A524'},
   free:      {name:'Pessoal',  color:'#F5A524'},
-  gym:       {name:'Saúde',    color:'#29710E'},
+  gym:       {name:'Saúde',    color:'#1A4A09'},
   spiritual: {name:'Igreja',   color:'#707763'},
   church:    {name:'Igreja',   color:'#707763'},
 };
@@ -4256,7 +4254,7 @@ const CAT_COLORS = {
   'Tráfego Pago':           { bg:'rgba(217,84,13,0.12)', border:'#D9540D', text:'#B4450A' },
   'Comercial':              { bg:'rgba(47,111,237,0.12)', border:'#2F6FED', text:'#2458C4' },
   'Operacional - Automação':{ bg:'rgba(139,63,217,0.12)', border:'#8B3FD9', text:'#6F2FB3' },
-  'Sucesso do Cliente':     { bg:'rgba(41,113,14,0.12)',  border:'#29710E', text:'#29710E' },
+  'Sucesso do Cliente':     { bg:'rgba(26,74,9,0.12)',  border:'#1A4A09', text:'#1A4A09' },
   'Estudo':                 { bg:'rgba(217,162,27,0.14)', border:'#D9A21B', text:'#9A7110' },
   'Agência':                { bg:'rgba(214,69,127,0.12)', border:'#D6457F', text:'#B0336A' },
   'Geral':                  { bg:'rgba(112,119,99,0.14)', border:'#707763', text:'#555C4B' },
@@ -4339,7 +4337,7 @@ const HS_TABS = [
   ['contratos','Contratos'], ['documentos','Documentos'], ['financeiro','Financeiro'], ['tarefas','Tarefas & Notas'],
   ['cs','CS'], ['reunioes','Reuniões']
 ];
-const HS_AV = [['#DCE8FF','#2F6FED'],['#EEE8DF','#6B5F52'],['#DFEBD6','#29710E'],['#FBDADB','#C23A3F'],['#FFF0D2','#9A7110'],['#EADFF8','#6F2FB3']];
+const HS_AV = [['#DCE8FF','#2F6FED'],['#EEE8DF','#6B5F52'],['#DFEBD6','#1A4A09'],['#FBDADB','#C23A3F'],['#FFF0D2','#9A7110'],['#EADFF8','#6F2FB3']];
 const HS_STATUS = [['pago','Pago'], ['em_dia','Em dia'], ['atraso','Em atraso']];
 
 let clients = [];
