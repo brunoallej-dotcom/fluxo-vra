@@ -8,8 +8,11 @@ Leia antes de começar; atualize antes de encerrar.
 - **Fase atual**: Fase 1 — autenticação multiusuário (login e senha por pessoa).
 - **Situação**: S1, S3, S4 e S5 concluídos; S2 com pendência (backup).
   **App servido pelo Firebase Hosting em `https://crm.somosvra.com.br` desde
-  2026-11-16.** Regras de contenção em produção desde 2026-11-16, verificadas pelo
-  usuário no app. O app em produção ainda **não tem login** e a **leitura continua pública**.
+  2026-11-16.** **Login em produção desde 2026-11-18 (cutover, Onda 4b):**
+  app novo e regras completas no ar; sem login, leitura e escrita recebem 403
+  (conferido). Bruno entrou e testou (CEO View, tarefas, clientes, criar
+  tarefa). Pendente: primeiro acesso de Júlia, Vinicius e Luiza — contas e
+  perfis criados; a senha sai do "Esqueci minha senha".
 - **Restrição do usuário (2026-11-16): nenhum plano pago por enquanto** —
   Firebase Spark, GitHub Free. Consequências:
   - backup: sem PITR/backup gerenciado → exportação diária criptografada via
@@ -33,9 +36,8 @@ Leia antes de começar; atualize antes de encerrar.
   subagentes coordenados pelo Claude Code.
   - **Onda 1** (Codex, commit `8ed8183`): login, gate de sessão, "Sair",
     "Esqueci minha senha", autosave só com sessão. Testada pelo usuário.
-  - **Onda 2** (PR #12): regras completas + R01–R13 e X01–X17, auditadas —
-    **não publicar antes do cutover**: o app atual não grava
-    `updatedBy`/`updatedAt` e cairia para todos.
+  - **Onda 2** (PR #12): regras completas + R01–R13 e X01–X17, auditadas;
+    publicadas no cutover (2026-11-18), depois do app novo.
   - **Onda 4a** (PR #11): E2E E01–E08 e how-to do cutover.
   - **Onda 3** (PR #16, que substituiu o #14): `PEOPLE` de `fluxo_users`, rotina
     pelo `routineId`, `fbWrite` com `updatedBy`/`updatedAt`, autosave só com
@@ -46,9 +48,9 @@ Leia antes de começar; atualize antes de encerrar.
   real nem chave. Onda 1 mergeada (#13); gate de SCA com exceção datada (#15);
   Onda 3 mergeada (#16). E2E **8/8 na `main` final** (`9e8cb14`); com o
   E09 (avatar do celular pede confirmação), 9/9.
-- **Próximo passo**: cutover (Onda 4b, `docs/how-to/cutover-login.md`), **só
-  com o usuário** (produção). Recomendado logo: com o repositório público, a
-  documentação aponta que a leitura do banco ainda é aberta até o cutover.
+- **Próximo passo**: acompanhar o primeiro acesso dos 3 (quem vir "acesso
+  ainda não liberado" → conferir `fluxo_users/{uid}`); S2 — backup diário
+  gratuito via GitHub Actions (spec a escrever); RH-08 até 2026-11-23.
 
 ### Roadmap (espelho de `docs/plan/implementation-waves.md`)
 
@@ -64,10 +66,10 @@ Leia antes de começar; atualize antes de encerrar.
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, regras de contenção + C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão | 0, S4 | 2, 4a | ✅ |
-| 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ✅ (não publicada) |
+| 2 | Regras do Firestore completas + testes R01–R13 | 0, S4 | 1, 3, 4a | ✅ (publicada em 2026-11-18) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ✅ |
 | 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ✅ |
-| 4b | Integração e cutover em produção | 2, 3, 4a | — | ⬜ |
+| 4b | Integração e cutover em produção | 2, 3, 4a | — | ✅ (2026-11-18) |
 
 Frentes paralelas depois de S1–S5: **A** = Ondas 1 → 3 (`public/index.html`,
 front-end, sessão principal), **B** = Onda 2 (regras do banco), **C** = Onda 4a
@@ -91,6 +93,10 @@ front-end, sessão principal), **B** = Onda 2 (regras do banco), **C** = Onda 4a
 | 2026-11-16 | `.firebaserc` com `default: demo-fluxo`; produção só pelo alias `prod` | `.firebaserc` |
 | 2026-11-16 | Mensagens de commit e títulos de PR em inglês (AISAC git-workflow); docs e UI seguem em pt-BR | — |
 | 2026-11-17 | Repositório público (Actions gratuito) e `main` protegida por ruleset do GitHub | Decisão do usuário; `AGENTS.md` |
+| 2026-11-18 | Cutover no plano gratuito com cópia local fresca como ponto de volta (sem backup agendado/PITR no Spark); backup diário pelo GitHub Actions logo depois — esperar deixaria o banco aberto, risco maior | Decisão AISAC; how-to passo 1 |
+| 2026-11-18 | Política de senha do Auth: modo "exigir", mínimo 10 caracteres | Console; how-to passo 2 |
+| 2026-11-18 | Perfis `fluxo_users` criados pelo MCP do Firebase (create-only, ID = UID lido do Auth), com confirmação do usuário em cada gravação | Conversa do cutover |
+| 2026-11-18 | Regras completas publicadas antes do primeiro acesso de Júlia, Vinicius e Luiza (perfis iguais ao do Bruno, já testado; o reset de senha não depende das regras) | Decisão do usuário |
 | 2026-11-17 | Exclusivo de CEO é só a tela CEO View; o conteúdo dela (tarefas por pessoa) a equipe já vê em Tarefas, Agenda Semanal e Kanban → sem mudança nas regras | Resposta do usuário; spec §3.4 |
 
 ## Questões em aberto
@@ -99,10 +105,10 @@ Detalhes e propostas na spec, §8.
 
 - ~~Q1~~ — resolvida: Luiza.
 - ~~Q2~~ — resolvida: Hostinger hoje → Firebase Hosting (`crm.somosvra.com.br`).
-- **Q3** — A equipe pode excluir clientes?
-- **Q4** — E-mail corporativo ou pessoal nas contas?
+- ~~Q3~~ — padrão adotado: a equipe pode excluir clientes (R13).
+- ~~Q4~~ — resolvida: e-mails pessoais (Gmail) nas 4 contas.
 - **Q5** — "Manter conectado" opcional para computador compartilhado?
-- **Q6** — A rotina de Bruno e Júlia continua compartilhada?
+- ~~Q6~~ — padrão adotado: Bruno e Júlia compartilham `routineId: routine`.
 
 ## Riscos conhecidos
 
@@ -112,25 +118,22 @@ Detalhes e propostas na spec, §8.
   telas. Dado novo exclusivo de CEO exige documento próprio com regra por `role`.
 - **Última gravação vence em `fluxo/tasks`** (documento único): edição
   offline de uma pessoa pode sobrescrever a de outra ao reconectar. Fase 2.
-- **Leitura pública em produção até o cutover** (Onda 4b): desde 2026-11-16
-  as regras de contenção restringem caminhos, formato, tamanho e exclusões,
-  mas qualquer pessoa com o ID do projeto ainda lê tudo e consegue sobrescrever
-  tarefas/reuniões/clientes no formato aceito. Antes das regras de contenção:
-  leitura e escrita totalmente abertas. **Confirmado em
-  2026-11-16** via MCP: regras `match /{document=**} { allow read, write: if true; }`
-  (sem prazo de expiração).
+- ~~Banco aberto em produção~~ — **encerrado no cutover de 2026-11-18**:
+  regras completas no ar; sem login, leitura e escrita recebem 403. (Histórico:
+  totalmente aberto até 2026-11-16; regras de contenção de 2026-11-16 a
+  2026-11-18, com leitura ainda pública.)
 - **Sem recuperação de dados** (confirmado em 2026-11-16): nenhum backup
   agendado, PITR desativado, retenção de versões de 1 h, proteção contra exclusão
   do banco desativada. Banco `(default)` em `southamerica-east1`. Backup
-  agendado e PITR exigem o plano Blaze.
+  agendado e PITR exigem o plano Blaze. Hoje só há cópias locais manuais em
+  `backups/` (2026-11-16 e 2026-11-18, esta logo antes do cutover); backup
+  diário pelo GitHub Actions é o próximo passo do S2.
 - **Documento único para tarefas e reuniões**: gravações quase simultâneas se
   sobrescrevem (a última vence) e há o limite de 1 MiB por documento. Resolvido
   na Fase 2.
-- **Ordem do cutover**: publicar `firestore.rules` antes do `index.html` novo
-  derruba o app para todos.
-- **Autoria só confiável depois da Onda 2**: com as regras de contenção,
-  `updatedBy`/`updatedAt` têm o tipo conferido, mas qualquer um pode
-  preenchê-los; a garantia (`updatedBy == request.auth.uid`) vem das regras completas.
+- ~~Ordem do cutover~~ e ~~autoria só confiável depois da Onda 2~~ — superados
+  no cutover de 2026-11-18 (app antes das regras; `updatedBy == request.auth.uid`
+  garantido pelas regras completas).
 - **Exceção de SCA até 2026-12-31** (`scripts/audit-gate.mjs`): alerta high
   GHSA-fc5q-39xc-vjpf (`picomatch` <= 4.0.7, ReDoS) só no tooling de testes
   (vitest/vite, node-gyp/re2 do `firebase-tools`); sem versão corrigida em
@@ -155,6 +158,26 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-18 — cutover do login em produção (Onda 4b)
+
+- Cópia local fresca (só leitura, REST público ainda liberado pela contenção):
+  `fluxo` (tasks, meetings, routine) e 8 clientes, em `backups/`.
+- Console (usuário): e-mail/senha ativado; criação e exclusão pelo usuário
+  desativadas; proteção contra enumeração ligada; política de senha "exigir"
+  com mínimo 10; `crm.somosvra.com.br` já nos domínios autorizados; 4 contas
+  criadas (uma corrigida: e-mail digitado errado, excluída e recriada).
+- Perfis: UIDs lidos com `auth_get_users`; 4 `fluxo_users/{uid}` criados com
+  `firestore_add_document` (Bruno e Júlia `ceo`/`routine`; Vinicius e Luiza
+  `staff`/`routine_<personId>`).
+- Hosting publicado da `main` `57702c8` (CI verde): domínio entrega o mesmo
+  sha256 do repositório e a tela de login. Bruno criou a senha pelo "Esqueci
+  minha senha", entrou e viu CEO View e tarefas.
+- Regras completas publicadas da `57702c8`. Teste negativo: `fluxo/tasks`,
+  `fluxo/meetings`, `fluxo/routine`, `fluxo_clients`, `fluxo_users` e escrita
+  anônima → 403. Bruno recarregou, criou tarefa e conferiu clientes: ok.
+- Pendente: primeiro acesso dos outros 3 (estavam dormindo; decisão do usuário
+  de fechar o banco antes).
 
 ### 2026-11-17 (manhã) — merges com o CI de volta e `main` protegida
 

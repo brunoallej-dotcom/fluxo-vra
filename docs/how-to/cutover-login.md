@@ -37,6 +37,8 @@ espera você confirmar e só então segue.
   Se o backup ainda não estiver decidido, **pare aqui** e resolva antes
   (veja "Riscos conhecidos" no `NOTES.md`). Além disso, peça ao Claude uma
   cópia local fresca dos dados (pasta `backups/`, que não vai para o git).
+  No cutover de 2026-11-18 a decisão foi seguir só com a cópia local fresca e
+  montar o backup diário pelo GitHub Actions logo depois (`NOTES.md`, decisões).
 - **Confirme antes de seguir:** o backup existe e você sabe restaurá-lo.
 
 ### 2. Login por e-mail e senha (Authentication)
@@ -50,6 +52,9 @@ No console do Firebase, projeto `fluxo-app-59174`, menu Authentication:
 3. Na mesma tela, confirme que a **proteção contra enumeração de e-mail**
    está ligada (em projetos novos já vem ligada). Ela impede que alguém
    descubra quem tem conta.
+4. **Configurações → Política de senha**: modo **Exigir a aplicação** e
+   tamanho mínimo **10**, sem exigir maiúscula, número ou símbolo (senha longa
+   protege mais e é mais fácil de lembrar).
 
 ### 3. Domínio autorizado
 

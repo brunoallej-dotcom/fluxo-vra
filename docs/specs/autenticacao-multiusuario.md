@@ -63,7 +63,7 @@ login com Google, multiempresa.
 | RF-11 | Toda gravação no Firestore inclui `updatedBy` (uid de quem gravou) e `updatedAt` (`serverTimestamp()`), por meio de um único helper de escrita. |
 | RF-12 | O avatar de uma pessoa sem classe de cor no CSS usa a cor do perfil (`color`) ou, sem ela, uma cor da paleta padrão escolhida pelo `personId`. |
 | RF-13 | Modo emulador para desenvolvimento e testes: em `localhost`, com `?emulator=1` na URL, o app usa o projeto `demo-fluxo` e conecta ao Auth Emulator (`127.0.0.1:9099`) e ao Firestore Emulator (`127.0.0.1:8080`). Fora de `localhost` o parâmetro é ignorado. Detalhes em §9.2. |
-| RF-14 | Contas são criadas só pelo dono do projeto no console do Firebase, com o cadastro público desativado. No primeiro acesso a pessoa usa "Esqueci minha senha" para criar a própria senha; quem cria a conta nunca sabe a senha. |
+| RF-14 | Contas são criadas só pelo dono do projeto no console do Firebase, com o cadastro público desativado. No primeiro acesso a pessoa usa "Esqueci minha senha" para criar a própria senha; quem cria a conta nunca sabe a senha. Política de senha do Auth em modo "exigir", com mínimo de 10 caracteres. |
 | RF-15 | O parser de responsáveis do plano de ação (`hsWhoKey`, hoje com regex fixa para Bruno/Júlia/Vinicius) passa a reconhecer os nomes vindos de `fluxo_users`. |
 | RF-16 | O salvamento automático (hoje `setInterval(saveState, 30000)`, que regrava o documento inteiro de tarefas a cada 30 s em cada aba aberta) só roda com sessão ativa (Onda 1) e só grava quando houver alteração local ainda não salva (Onda 3). Uma aba esquecida aberta não pode sobrescrever o trabalho dos outros. |
 

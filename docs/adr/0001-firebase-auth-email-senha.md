@@ -1,6 +1,6 @@
 # ADR-0001 — Firebase Authentication com e-mail e senha
 
-- **Status**: proposed
+- **Status**: accepted (implementado; em produção desde o cutover de 2026-11-18)
 - **Data**: 2026-11-16
 - **Spec**: [docs/specs/autenticacao-multiusuario.md](../specs/autenticacao-multiusuario.md)
 
