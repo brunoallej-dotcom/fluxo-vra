@@ -48,7 +48,14 @@ Leia antes de começar; atualize antes de encerrar.
   real nem chave. Onda 1 mergeada (#13); gate de SCA com exceção datada (#15);
   Onda 3 mergeada (#16). E2E **8/8 na `main` final** (`9e8cb14`); com o
   E09 (avatar do celular pede confirmação), 9/9.
-- **Próximo passo**: acompanhar o primeiro acesso dos 3 (quem vir "acesso
+- **Identidade visual VRA (2026-11-18)**: paleta creme `#FAFAF4`, laranja
+  `#D9540D` e verde escuro `#1A4A09` (o usuário trocou o `#29710E` depois dos prints), e logo nova (monograma) na branch
+  `feat/brand-colors-logo` ([spec](docs/specs/identidade-visual.md)). Ondas
+  V1–V3 ✅ (E2E 9/9, 38 prints, revisão com contraste corrigido); falta PR,
+  merge e publicar o Hosting (só com confirmação). Execução pelos workers
+  Codex `junin-1` e `junin02`; spec e ondas pelo manager.
+- **Próximo passo**: PR da identidade visual e publicação com confirmação;
+  acompanhar o primeiro acesso dos 3 (quem vir "acesso
   ainda não liberado" → conferir `fluxo_users/{uid}`); S2 — backup diário
   gratuito via GitHub Actions (spec a escrever); RH-08 até 2026-11-23.
 
@@ -70,6 +77,16 @@ Leia antes de começar; atualize antes de encerrar.
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração | 1 | 2, 4a | ✅ |
 | 4a | Testes E2E E01–E08 (test-first) | 0, S4 | 1, 2, 3 | ✅ |
 | 4b | Integração e cutover em produção | 2, 3, 4a | — | ✅ (2026-11-18) |
+
+Identidade visual VRA ([spec](docs/specs/identidade-visual.md)):
+
+| Onda | Entrega | Status |
+|------|---------|--------|
+| V1 | Tokens de cor, barra lateral verde, logo nova | ✅ |
+| V2 | E2E 9/9 e prints claro/escuro, computador/celular (`junin-1`) | ✅ |
+| V3 | Revisão independente (`junin02`) | ✅ |
+| V4 | Correções de contraste, PR, merge | 🟡 |
+| V5 | Publicar o Hosting (com confirmação) | ⏳ |
 
 Frentes paralelas depois de S1–S5: **A** = Ondas 1 → 3 (`public/index.html`,
 front-end, sessão principal), **B** = Onda 2 (regras do banco), **C** = Onda 4a
@@ -158,6 +175,23 @@ Detalhes e propostas na spec, §8.
   (Cloud Functions + Admin SDK).
 
 ## Diário de sessões
+
+### 2026-11-18 (tarde) — identidade visual VRA (manager + juninhos)
+
+- Pedido: trocar preto/cobre/branco por creme `#FAFAF4`, laranja `#D9540D` e
+  verde `#29710E`, e usar a logo nova. Logo extraída da arte do usuário com
+  Python puro (alfa pelo canal azul), em laranja e creme, 617×389, base64.
+- V1 (manager): tokens nos dois temas, barra lateral verde com item ativo em
+  pílula creme, `--calm` = verde da marca, `--calm-soft`.
+- Regra nova do usuário: execução vai para os workers Codex (`junin-1`,
+  `junin02`); spec e ondas ficam com o manager.
+- V2 (`junin-1`): E2E 9/9; 38 prints. V3 (`junin02`): três falhas de
+  contraste → corrigidas por ele (`--accent-text`, `--text3`, `--vra-dim`,
+  neutros e sombras esverdeados), conferidas pelo manager (`195da92`).
+- Usuário viu os prints e não gostou do verde `#29710E`: trocado pelo verde
+  escuro `#1A4A09` em todo o tema claro (`junin02`, conferido).
+- Achado anterior, fora do escopo: CEO View no celular com os nomes das
+  pessoas sobrepostos (`.ceo-people` sem quebra de linha no mobile).
 
 ### 2026-11-18 — cutover do login em produção (Onda 4b)
 
