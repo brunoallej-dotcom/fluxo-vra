@@ -169,7 +169,7 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
   `auth-cutover`).
 - **Depende de / paralela com**: depende da 2, da 3 e da 4a. Sequencial (envolve produção).
 - **Critérios de aceite**:
-  - `npm run test:e2e` termina com código 0 e executa E01–E08.
+  - `npm run test:e2e` termina com código 0 e executa E01–E09 (E09 incluído em 2026-11-17).
   - Checklist de cutover concluído **nesta ordem**:
     1. Backup agendado ou PITR ativado no Firestore.
     2. Provedor e-mail/senha ativado; cadastro público desativado; proteção
