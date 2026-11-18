@@ -22,10 +22,10 @@ Rodam na sessão principal, nesta ordem, antes de qualquer frente paralela.
 |------|---------|------------|--------------|--------|
 | 0 | Fundação: tooling Node, Firebase CLI, emuladores, `firestore.rules` de contenção + testes C01–C11, CI | S1 | — | ✅ |
 | 1 | Login, gate de sessão, "Sair", "Esqueci minha senha", autosave só com sessão (`public/index.html`) | 0, S4 | 2, 4a | ✅ |
-| 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ✅ (não publicada — só no cutover) |
+| 2 | Regras do Firestore completas + testes R01–R13 (`firestore.rules`, `tests/rules/`) | 0, S4 | 1, 3, 4a | ✅ (publicada no cutover, 2026-11-18) |
 | 3 | Pessoas dinâmicas, rotina por perfil, helper de escrita com auditoria, autosave só com alteração (`public/index.html`) | 1 | 2, 4a | ✅ |
 | 4a | Testes E2E E01–E08, escritos antes da implementação (`tests/e2e/`, `docs/how-to/`) | 0, S4 | 1, 2, 3 | ✅ |
-| 4b | Integração (E2E verde com 1+2+3+4a) e cutover em produção | 2, 3, 4a | — | ⬜ |
+| 4b | Integração (E2E verde com 1+2+3+4a) e cutover em produção | 2, 3, 4a | — | ✅ (2026-11-18) |
 
 ### Frentes paralelas
 
@@ -182,6 +182,12 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
     6. Só então `firestore.rules` completo publicado, a partir da `main` com CI
        verde (`firebase deploy --only firestore:rules --project prod`).
     7. Teste negativo em produção: leitura sem login recebe `permission-denied`.
+- **Execução (2026-11-18)**: concluída a partir da `main` `57702c8`. Desvios
+  registrados no `NOTES.md` (decisões): passo 1 com cópia local fresca no lugar
+  de backup agendado/PITR (indisponíveis no Spark); passo 2 também com política
+  de senha (mínimo 10, "exigir"); passo 5 testado pelo Bruno e passo 6 feito
+  antes do primeiro acesso dos outros 3, por decisão do usuário. Teste
+  negativo: 403 em todas as coleções e na escrita anônima.
 - **Goal command**: `/goal npm run test:e2e termina com código 0 e a saída lista E01 a E08 como passed, stop after 8 tries` (os passos de produção são manuais e ficam fora do goal loop)
 
 ## Notas de execução

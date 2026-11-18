@@ -14,8 +14,9 @@ primeiro acesso.
 ### 1. Criar a conta (Authentication)
 
 1. Authentication → aba **Users** → **Add user**.
-2. Digite o e-mail da pessoa e uma senha **aleatória e longa** (use um
-   gerador de senhas; não guarde nem envie essa senha a ninguém).
+2. Digite o e-mail da pessoa e uma senha **aleatória e longa**, com pelo menos
+   10 caracteres, que é o mínimo da política de senha (use um gerador de
+   senhas; não guarde nem envie essa senha a ninguém).
 3. Depois de criada, copie o **UID** da conta (coluna "User UID").
 
 ### 2. Criar o perfil (Firestore)
