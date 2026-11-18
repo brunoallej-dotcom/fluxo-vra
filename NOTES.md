@@ -51,11 +51,11 @@ Leia antes de começar; atualize antes de encerrar.
 - **Identidade visual VRA (2026-11-18)**: paleta creme `#FAFAF4`, laranja
   `#D9540D` e verde escuro `#1A4A09` (o usuário trocou o `#29710E` depois dos prints), e logo nova (monograma) na branch
   `feat/brand-colors-logo` ([spec](docs/specs/identidade-visual.md)). Ondas
-  V1–V3 ✅ (E2E 9/9, 38 prints, revisão com contraste corrigido); falta PR,
-  merge e publicar o Hosting (só com confirmação). Execução pelos workers
+  V1–V5 ✅: E2E 9/9, 38 prints, revisão com contraste corrigido; PR #20
+  mergeado (`07cccfb`) e **Hosting publicado em 2026-11-18** com confirmação
+  do usuário (domínio entrega o mesmo sha256 da `main`). Execução pelos workers
   Codex `junin-1` e `junin02`; spec e ondas pelo manager.
-- **Próximo passo**: PR da identidade visual e publicação com confirmação;
-  acompanhar o primeiro acesso dos 3 (quem vir "acesso
+- **Próximo passo**: acompanhar o primeiro acesso dos 3 (quem vir "acesso
   ainda não liberado" → conferir `fluxo_users/{uid}`); S2 — backup diário
   gratuito via GitHub Actions (spec a escrever); RH-08 até 2026-11-23.
 
@@ -85,8 +85,8 @@ Identidade visual VRA ([spec](docs/specs/identidade-visual.md)):
 | V1 | Tokens de cor, barra lateral verde, logo nova | ✅ |
 | V2 | E2E 9/9 e prints claro/escuro, computador/celular (`junin-1`) | ✅ |
 | V3 | Revisão independente (`junin02`) | ✅ |
-| V4 | Correções de contraste, PR, merge | 🟡 |
-| V5 | Publicar o Hosting (com confirmação) | ⏳ |
+| V4 | Correções de contraste, verde escuro `#1A4A09`, PR #20, merge | ✅ |
+| V5 | Publicar o Hosting (com confirmação) | ✅ (2026-11-18) |
 
 Frentes paralelas depois de S1–S5: **A** = Ondas 1 → 3 (`public/index.html`,
 front-end, sessão principal), **B** = Onda 2 (regras do banco), **C** = Onda 4a
@@ -190,6 +190,10 @@ Detalhes e propostas na spec, §8.
   neutros e sombras esverdeados), conferidas pelo manager (`195da92`).
 - Usuário viu os prints e não gostou do verde `#29710E`: trocado pelo verde
   escuro `#1A4A09` em todo o tema claro (`junin02`, conferido).
+- Usuário aprovou o visual: PR #20 com squash merge (`07cccfb`), CI verde na
+  `main`, `firebase deploy --only hosting --project prod` a partir desse
+  commit; `crm.somosvra.com.br` e `web.app` entregam o mesmo sha256 do
+  repositório.
 - Achado anterior, fora do escopo: CEO View no celular com os nomes das
   pessoas sobrepostos (`.ceo-people` sem quebra de linha no mobile).
 

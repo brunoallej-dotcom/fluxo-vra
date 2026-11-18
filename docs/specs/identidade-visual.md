@@ -1,6 +1,6 @@
 # Spec — Identidade visual VRA (cores e logo)
 
-- **Status**: implementada e verificada na branch `feat/brand-colors-logo` (falta PR e publicação)
+- **Status**: implementada — no ar em `crm.somosvra.com.br` desde 2026-11-18 (PR #20, `07cccfb`)
 - **Data**: 2026-11-18
 - **Pedido do usuário**: trocar a paleta preto/cobre/branco pela nova e usar
   a logo nova ("Identidade premium do monograma VRA"), com autonomia para
