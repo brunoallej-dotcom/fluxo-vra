@@ -1,6 +1,6 @@
 # Spec — Identidade visual VRA (cores e logo)
 
-- **Status**: em implementação (branch `feat/brand-colors-logo`)
+- **Status**: implementada e verificada na branch `feat/brand-colors-logo` (falta PR e publicação)
 - **Data**: 2026-11-18
 - **Pedido do usuário**: trocar a paleta preto/cobre/branco pela nova e usar
   a logo nova ("Identidade premium do monograma VRA"), com autonomia para
@@ -28,7 +28,7 @@ clientes); cores de prioridade (urgente/médio); cores gravadas em
 | ID | Requisito |
 |---|---|
 | RV-01 | Tema claro: fundo da página creme mais escuro (`#F1F1E7`), cartões em creme `#FAFAF4`, textos e bordas em neutros puxados para o verde. Nada de branco puro em superfícies grandes. |
-| RV-02 | Destaque laranja `#D9540D` em todo lugar onde hoje há cobre (CSS, gráficos do Chart.js, legenda da rotina, categoria "Tráfego Pago", relatório). Hover do botão principal: `#B9470A`. |
+| RV-02 | Destaque laranja `#D9540D` em todo lugar onde hoje há cobre (CSS, gráficos do Chart.js, legenda da rotina, categoria "Tráfego Pago", relatório). Hover do botão principal: `#B9470A`. Laranja usado como **cor de texto** sai de `--accent-text` (`#B4450A` no claro, `#E86B30` no escuro), para passar de 4,5:1; o `#D9540D` fica para fundos, bordas, barras e ícones. |
 | RV-03 | Barra lateral verde `#29710E` com texto creme; item ativo em pílula creme com texto verde, ícone laranja e filete laranja à esquerda; menu do usuário em verde mais escuro. |
 | RV-04 | Verde da marca como `--calm` (concluído, em dia, sincronizado), com fundo suave por token (`--calm-soft`) que funciona nos dois temas. |
 | RV-05 | Tema escuro: neutros quase pretos puxados para o verde (`#0D130B` …), texto creme, barra lateral em verde profundo (`#1A4A09`), verde de status mais claro (`#5FAE3E`) para manter contraste. |
@@ -44,3 +44,18 @@ clientes); cores de prioridade (urgente/médio); cores gravadas em
 - Prints conferidos (claro e escuro; computador e celular) da tela de login,
   Dashboard, Tarefas, Agenda, Kanban, Health Score e Relatórios.
 - Revisão independente do diff sem achados bloqueantes.
+
+## 4. Verificação (2026-11-18)
+
+- `npm run check` verde; E2E **E01–E09: 9/9** nos emuladores (`junin-1`).
+- 38 prints (login, Dashboard, Tarefas, Agenda semanal/mensal, Kanban, Health
+  Score, Relatórios, CEO View, barra lateral no celular; claro/escuro;
+  1440×900 e 390×844), sem resto da paleta antiga nem logo cortada.
+- Revisão independente (`junin02`): sem token quebrado nem cor antiga; três
+  falhas de contraste corrigidas (`--text3` claro `#686E61`, `--vra-dim`
+  `#D4E3CD`, `--accent-text`). Medidas finais: `--text3`/`--bg` 4,63:1;
+  `--accent-text`/`--surface` 5,28:1 (claro) e 5,46:1 (escuro); `--vra-dim`
+  sobre o verde 4,52:1.
+- Achado fora do escopo, **anterior** a esta mudança: na CEO View no celular,
+  os botões de pessoa ficam numa linha só e os nomes se sobrepõem (regra
+  `.ceo-people { flex-wrap:nowrap }` do bloco mobile).

@@ -195,14 +195,14 @@ Depois de S1–S5, três frentes rodam ao mesmo tempo, cada uma em sua worktree:
 > Spec: [`docs/specs/identidade-visual.md`](../specs/identidade-visual.md).
 > Branch `feat/brand-colors-logo`, worktree `.claude/worktrees/brand-colors`.
 > Spec e ondas pelo manager (Claude Code); execução pelos workers Codex
-> (`junin-1`, `junin-2`), por pedido do usuário.
+> (`junin-1`, `junin02`), por pedido do usuário.
 
 | Onda | Entrega | Executor | Depende de | Paralela com | Status |
 |------|---------|----------|------------|--------------|--------|
 | V1 | Tokens de cor, barra lateral verde, logo nova embutida (`public/index.html`) | Manager (feita antes da divisão de tarefas) | — | — | ✅ |
-| V2 | Verificação: E2E E01–E09 e prints claro/escuro, computador/celular | `junin-1` | V1 | V3 | ⏳ |
-| V3 | Revisão independente do diff (contraste RV-07, cor antiga esquecida, regressão) | `junin-2` | V1 | V2 | ⏳ |
-| V4 | Correções dos achados, PR com CI verde, squash merge | Manager + juninhos | V2, V3 | — | ⏳ |
+| V2 | Verificação: E2E E01–E09 e prints claro/escuro, computador/celular | `junin-1` | V1 | V3 | ✅ (9/9, 38 prints) |
+| V3 | Revisão independente do diff (contraste RV-07, cor antiga esquecida, regressão) | `junin02` | V1 | V2 | ✅ |
+| V4 | Correções dos achados (`junin02`, commit `195da92`), PR com CI verde, squash merge | Manager + juninhos | V2, V3 | — | 🟡 (correções feitas; falta PR/merge) |
 | V5 | Publicar o Hosting (`--project prod`) | Usuário confirma | V4 | — | ⏳ |
 
 ## Notas de execução
