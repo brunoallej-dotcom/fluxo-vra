@@ -1357,7 +1357,7 @@ body[data-role="staff"] .dash-avatars { display:none; }
     <div class="topbar-div"></div>
     <div class="topbar-date" id="todayDate"></div>
     <button class="btn btn-primary" id="topAction" onclick="openModal()">＋ Nova tarefa</button>
-    <button class="mob-avatar" id="mobAvatar" data-testid="logout" onclick="logout()" aria-label="Sair" title="Sair">B</button>
+    <button class="mob-avatar" id="mobAvatar" data-testid="logout" onclick="logout(true)" aria-label="Sair" title="Sair">B</button>
   </header>
 
   <!-- DASHBOARD PAGE -->
@@ -2111,8 +2111,12 @@ async function forgotPassword() {
     }
   }
 }
-async function logout() {
-  if (!window._session || (SYNC.pending > 0 && !confirm('Há alterações ainda não sincronizadas. Sair mesmo assim?'))) return;
+// askFirst: o avatar do celular sempre pergunta antes (um toque acidental não encerra a sessão).
+// Com gravações pendentes vale só a pergunta delas: uma pergunta só (RF-08).
+async function logout(askFirst) {
+  if (!window._session) return;
+  const ask = SYNC.pending > 0 ? 'Há alterações ainda não sincronizadas. Sair mesmo assim?' : askFirst ? 'Sair da sua conta?' : '';
+  if (ask && !confirm(ask)) return;
   await endAccess('');
   document.getElementById('loginEmail').value = ''; // computador compartilhado: não deixa o e-mail anterior
 }

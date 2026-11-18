@@ -57,7 +57,7 @@ login com Google, multiempresa.
 | RF-05 | `me()` passa a vir do perfil do usuário logado. A tela "quem é você?" (`openWhoPicker`/`chooseWho`) e a chave `localStorage.fluxo_me` deixam de existir. |
 | RF-06 | A lista de pessoas (`PEOPLE`) é carregada de `fluxo_users`, ordenada por CEOs primeiro e depois por nome. Pessoas inativas continuam aparecendo como dono de tarefas antigas, mas não podem ser escolhidas como dono de tarefa nova. |
 | RF-07 | Papel `ceo` vê a CEO View; papel `staff` não vê (comportamento atual mantido). Sem identidade, ninguém é CEO: `iAmCeo()` passa a negar por padrão. |
-| RF-08 | Botão "Sair" na sidebar e no menu mobile: chama `signOut`, cancela todos os listeners do Firestore, apaga do `localStorage` as chaves `fluxo_*` (exceto `fluxo_theme` e `fluxo_theme_v2`) e volta para a tela de login. Se houver gravações pendentes (`SYNC.pending > 0`), pede confirmação antes. |
+| RF-08 | Botão "Sair" na sidebar e no menu mobile: chama `signOut`, cancela todos os listeners do Firestore, apaga do `localStorage` as chaves `fluxo_*` (exceto `fluxo_theme` e `fluxo_theme_v2`) e volta para a tela de login. Se houver gravações pendentes (`SYNC.pending > 0`), pede confirmação antes. No celular, o avatar do topo (que também sai) sempre pede confirmação — "Sair da sua conta?" —, para um toque acidental não encerrar a sessão; com gravações pendentes, aparece só a pergunta das pendências (uma pergunta só). |
 | RF-09 | A sessão continua aberta entre recarregamentos e abas (`browserLocalPersistence`) até a pessoa clicar em "Sair". Sair em uma aba leva todas as abas abertas de volta ao login. |
 | RF-10 | A rotina usa o documento `fluxo/{routineId}` do perfil. Bruno e Júlia continuam compartilhando `routine`; a 4ª pessoa começa com a rotina vazia. Some o `'Vinicius'` fixo de `routineKey()` e `loadRoutine()`. |
 | RF-11 | Toda gravação no Firestore inclui `updatedBy` (uid de quem gravou) e `updatedAt` (`serverTimestamp()`), por meio de um único helper de escrita. |
@@ -348,6 +348,7 @@ teste semeados no Auth/Firestore Emulator. Comando: `npm run test:e2e`.
 | E06 | "Sair" | Volta ao login; `localStorage` sem chaves `fluxo_*` exceto tema |
 | E07 | "Esqueci minha senha" | Mensagem neutra do RF-03 (e-mail aparece no emulador) |
 | E08 | Criar tarefa logado | Documento `fluxo/tasks` no emulador com `updatedBy` = uid do usuário |
+| E09 | No celular, tocar no avatar do topo | Pergunta "Sair da sua conta?"; cancelar mantém a sessão; confirmar volta ao login |
 
 ### 7.3 Manual (cutover em produção)
 

@@ -26,6 +26,7 @@ export const MSG = {
   invalidCredentials: 'E-mail ou senha inválidos.',
   resetNeutral: 'Se o e-mail estiver cadastrado, você vai receber um link para criar uma nova senha.',
   notReleased: 'Seu acesso ainda não foi liberado. Fale com um CEO.',
+  logoutConfirm: 'Sair da sua conta?',
 } as const;
 
 /** App em modo emulador (spec §9.2); `baseURL` vem do playwright.config.ts. */

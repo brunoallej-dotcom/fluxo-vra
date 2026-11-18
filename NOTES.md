@@ -44,7 +44,8 @@ Leia antes de começar; atualize antes de encerrar.
   o usuário tornou o repositório **público** (Actions gratuito). Histórico
   conferido antes dos merges: nunca entrou `backups/`, arquivo de ambiente
   real nem chave. Onda 1 mergeada (#13); gate de SCA com exceção datada (#15);
-  Onda 3 mergeada (#16). E2E **8/8 na `main` final** (`9e8cb14`).
+  Onda 3 mergeada (#16). E2E **8/8 na `main` final** (`9e8cb14`); com o
+  E09 (avatar do celular pede confirmação), 9/9.
 - **Próximo passo**: cutover (Onda 4b, `docs/how-to/cutover-login.md`), **só
   com o usuário** (produção). Recomendado logo: com o repositório público, a
   documentação aponta que a leitura do banco ainda é aberta até o cutover.
@@ -167,8 +168,9 @@ Detalhes e propostas na spec, §8.
   `Check + dependências + regras do Firestore (emulador)` com branch
   atualizada, só squash, bloqueio de force push e exclusão, sem bypass.
 - Respostas do usuário: proteger a `main` = sim; exclusivo de CEO = só a tela
-  CEO View (sem mudança nas regras). Pendente: confirmação antes de sair pelo
-  avatar no celular.
+  CEO View (sem mudança nas regras) (#17); avatar do celular pergunta antes
+  de sair = sim (opção B): RF-08 ampliado, E09 novo (test-first, falhou antes
+  da mudança) e `logout(askFirst)`; E2E **9/9** com as regras completas.
 
 ### 2026-11-17 (madrugada) — Claude Code como manager das frentes
 

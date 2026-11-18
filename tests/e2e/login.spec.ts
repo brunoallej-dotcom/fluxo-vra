@@ -1,4 +1,4 @@
-// E01–E08 — login, sessão e auditoria de gravação (spec autenticacao-multiusuario.md §7.2).
+// E01–E09 — login, sessão e auditoria de gravação (spec autenticacao-multiusuario.md §7.2).
 //
 // Escritos ANTES da implementação (Onda 4a, test-first): enquanto a frente A não entrega o
 // login, falham por "login-screen não encontrado" — é o esperado. Rodam contra os emuladores
@@ -234,4 +234,46 @@ test('E08 criar tarefa logado grava fluxo/tasks com updatedBy igual ao uid', asy
   expect(stored?.updatedBy).toBe(ceo.uid);
   expect(stored?.updatedAt, 'updatedAt gravado pelo app').toBeTruthy();
   expect(stored?.updatedAt).not.toBe(SEED_UPDATED_AT);
+});
+
+test('E09 no celular, o avatar do topo pede confirmação antes de sair', async ({ page }) => {
+  const staff = userByKey('staff');
+  const initial = staff.profile?.initial ?? '';
+  expect(initial, 'inicial do perfil na fixture').not.toBe('');
+
+  await loginAs(page, staff);
+  await page.setViewportSize(MOBILE_VIEWPORT);
+
+  // No celular a sidebar fica fora da tela (translateX), mas o Playwright ainda a considera
+  // visível: o avatar é o controle `logout` que mostra a inicial do perfil. A inicial do
+  // staff ("V") difere do "B" do HTML estático, então o texto vem mesmo do perfil.
+  const avatar = byId(page, 'logout').filter({ hasText: new RegExp(`^${initial}$`) });
+  await expect(avatar).toHaveCount(1);
+  await expect(avatar).toBeInViewport();
+
+  // Sem gravações pendentes, para a pergunta ser a do avatar e não a do RF-08.
+  await expect
+    .poll(() => page.evaluate('SYNC.pending'), { message: 'gravações pendentes', timeout: AUTH_TIMEOUT })
+    .toBe(0);
+
+  const asked: string[] = [];
+  let acceptDialog = false;
+  page.on('dialog', (dialog) => {
+    asked.push(dialog.message());
+    void (acceptDialog ? dialog.accept() : dialog.dismiss());
+  });
+
+  // Cancelar: continua logado.
+  await avatar.click();
+  await expect.poll(() => asked.length, { message: 'pergunta ao tocar no avatar' }).toBe(1);
+  expect(asked[0]).toBe(MSG.logoutConfirm);
+  await expect(byId(page, 'app-shell')).toBeVisible();
+  await expect(byId(page, 'login-screen')).toBeHidden();
+
+  // Confirmar: sai e volta ao login.
+  acceptDialog = true;
+  await avatar.click();
+  await expect(byId(page, 'login-screen')).toBeVisible({ timeout: AUTH_TIMEOUT });
+  await expect(byId(page, 'app-shell')).toBeHidden();
+  expect(asked).toEqual([MSG.logoutConfirm, MSG.logoutConfirm]);
 });
