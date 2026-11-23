@@ -23,7 +23,7 @@
     "firebase": "13.3.0",
     "firebase-tools": "15.36.0",
     "typescript": "7.0.2",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   },
   "overrides": {
     "@grpc/grpc-js": "1.14.7"
